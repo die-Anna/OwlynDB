@@ -99,7 +99,7 @@
         @if (form().options?.ssh) {
           <span></span>
           <div class="note">
-            Ziel = {{ es() ? 'Elasticsearch' : 'Datenbank' }} aus Sicht des SSH-Servers (z. B. localhost {{ es() ? 9200 : 1433 }}).{{ form().options?.tunnel ? ' SSH läuft im TLS-Tunnel zum Proxy (wie ProxyCommand openssl s_client).' : '' }}
+            Ziel = {{ es() ? 'Elasticsearch' : 'Datenbank' }} aus Sicht des SSH-Servers (z. B. localhost {{ defaultPort[form().dialect] }}).{{ form().options?.tunnel ? ' SSH läuft im TLS-Tunnel zum Proxy (wie ProxyCommand openssl s_client).' : '' }}
           </div>
 
           <label for="cd-ssh-host">SSH-Server</label>

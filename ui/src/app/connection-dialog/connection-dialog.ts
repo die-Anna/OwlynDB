@@ -23,6 +23,7 @@ export class ConnectionDialog {
   protected state = inject(AppState);
   protected readonly dialects = Object.entries(DIALECT_LABEL) as [Dialect, string][];
   protected readonly colors = COLORS;
+  protected readonly defaultPort = DEFAULT_PORT;
 
   protected form = signal<ConnectionInput>(blank());
   /** beim Bearbeiten: Passwort nur ändern, wenn das Feld angefasst wurde */

@@ -1,0 +1,460 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.side {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  .lbl {
+    min-width: 44px;
+    color: var(--fg-dim);
+    font-weight: 600;
+  }
+
+  select {
+    height: 26px;
+    max-width: 180px;
+  }
+
+  select.table {
+    max-width: 220px;
+  }
+}
+
+.opts {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+
+  .lbl {
+    color: var(--fg-dim);
+    font-weight: 600;
+  }
+
+  .pick {
+    max-width: 260px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    &.on {
+      border-color: var(--accent);
+    }
+  }
+
+  .where {
+    width: 260px;
+  }
+}
+
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+}
+
+.panel {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 12px;
+  z-index: 51;
+  width: 380px;
+  max-height: 380px;
+  display: flex;
+  flex-direction: column;
+  padding: 8px 10px;
+  gap: 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: var(--shadow);
+
+  &.right {
+    left: 200px;
+  }
+
+  .ph {
+    color: var(--fg-dim);
+  }
+
+  .cols {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    overflow-y: auto;
+    min-height: 0;
+  }
+
+  .cname {
+    font-family: var(--mono);
+  }
+
+  .dimmed {
+    opacity: 0.6;
+  }
+}
+
+.note {
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--fg-dim);
+  border-bottom: 1px solid var(--border);
+}
+
+.progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  font-size: 12px;
+
+  .meter {
+    height: 6px;
+    border-radius: 3px;
+    overflow: hidden;
+    background: var(--bg-2);
+  }
+
+  .fill {
+    height: 100%;
+    background: var(--accent);
+    transition: width 0.3s;
+
+    &.indef {
+      opacity: 0.5;
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+  }
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.2;
+  }
+}
+
+.summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 12px;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+
+  &.on {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 18%, var(--bg));
+  }
+
+  &.s-onlySource b {
+    color: var(--ok);
+  }
+
+  &.s-onlyTarget b {
+    color: var(--danger);
+  }
+
+  &.s-different b {
+    color: var(--warn);
+  }
+}
+
+.stale {
+  padding: 1px 8px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--warn) 25%, var(--bg));
+}
+
+.warn {
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--warn);
+  border-bottom: 1px solid var(--border);
+}
+
+.same {
+  padding: 24px 12px;
+  color: var(--ok);
+}
+
+.hint {
+  padding: 24px 12px;
+  max-width: 900px;
+}
+
+.dim {
+  color: var(--fg-dim);
+}
+
+.grow {
+  flex: 1;
+}
+
+.split {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.grid {
+  flex: 3;
+  min-height: 120px;
+}
+
+.scriptpane {
+  flex: 2;
+  min-height: 140px;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border);
+
+  .toolbar {
+    border-top: 0;
+  }
+
+  .editor {
+    flex: 1;
+    min-height: 0;
+  }
+}
+
+.link {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+/* Tabelle oder ganzes Schema */
+.mode {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  overflow: hidden;
+
+  button {
+    height: 26px;
+    padding: 0 10px;
+    border: 0;
+    background: var(--bg);
+    color: var(--fg);
+    cursor: pointer;
+
+    & + button {
+      border-left: 1px solid var(--border);
+    }
+
+    &.on {
+      background: color-mix(in srgb, var(--accent) 18%, var(--bg));
+      font-weight: 600;
+    }
+
+    &:disabled {
+      cursor: default;
+    }
+  }
+}
+
+.alltables {
+  font-size: 12px;
+}
+
+/* Skript als Datei: Fortschritt bzw. Ergebnis */
+.filejob {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+
+  > span:first-child {
+    flex: 1;
+    min-width: 200px;
+    word-break: break-all;
+  }
+
+  &.bad {
+    color: var(--danger);
+  }
+
+  .filelog {
+    flex-basis: 100%;
+    max-height: 90px;
+    overflow-y: auto;
+  }
+}
+
+/* Übersicht eines ganzen Schemas */
+.overview {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+
+  th {
+    position: sticky;
+    top: 0;
+    padding: 5px 10px;
+    background: var(--bg-2);
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+    font-weight: 600;
+    color: var(--fg-dim);
+  }
+
+  td {
+    padding: 4px 10px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  tr {
+    cursor: pointer;
+
+    &:hover td {
+      background: var(--sel);
+    }
+  }
+
+  tr.diff .name {
+    font-weight: 600;
+  }
+
+  .num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .s-onlySource {
+    color: var(--ok);
+  }
+
+  .s-onlyTarget {
+    color: var(--danger);
+  }
+
+  .s-different {
+    color: var(--warn);
+  }
+
+  .errtext {
+    color: var(--warn);
+    white-space: normal;
+  }
+
+  .btn.small {
+    height: 22px;
+    margin-left: 8px;
+    padding: 0 8px;
+    font-size: 12px;
+    color: var(--fg);
+  }
+
+  /* „Schlüssel …“ nur in der Zeile unter der Maus */
+  .keycell .change {
+    margin-left: 8px;
+    visibility: hidden;
+  }
+
+  tr:hover .keycell .change,
+  tr.picking .keycell .change {
+    visibility: visible;
+  }
+
+  tr.picking td {
+    background: var(--sel);
+  }
+
+  /* Schlüsselspalten wählen, unter der Zeile der Tabelle */
+  tr.keypick {
+    cursor: default;
+
+    &:hover td {
+      background: var(--bg-2);
+    }
+
+    td {
+      padding: 8px 12px 10px 24px;
+      background: var(--bg-2);
+      white-space: normal;
+    }
+
+    .ph {
+      margin-bottom: 6px;
+      color: var(--fg-dim);
+    }
+
+    .cols {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 18px;
+      max-height: 160px;
+      overflow-y: auto;
+    }
+
+    .cname {
+      font-family: var(--mono);
+    }
+
+    .kpbar {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-top: 8px;
+    }
+  }
+}

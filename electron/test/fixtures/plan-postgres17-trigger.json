@@ -1,0 +1,82 @@
+[
+  {
+    "Plan": {
+      "Node Type": "ModifyTable",
+      "Operation": "Update",
+      "Parallel Aware": false,
+      "Async Capable": false,
+      "Relation Name": "fx_notiz",
+      "Alias": "fx_notiz",
+      "Startup Cost": 0,
+      "Total Cost": 59.5,
+      "Plan Rows": 0,
+      "Plan Width": 0,
+      "Actual Startup Time": 11.402,
+      "Actual Total Time": 11.403,
+      "Actual Rows": 0,
+      "Actual Loops": 1,
+      "Shared Hit Blocks": 7613,
+      "Shared Read Blocks": 0,
+      "Shared Dirtied Blocks": 5,
+      "Shared Written Blocks": 5,
+      "Local Hit Blocks": 0,
+      "Local Read Blocks": 0,
+      "Local Dirtied Blocks": 0,
+      "Local Written Blocks": 0,
+      "Temp Read Blocks": 0,
+      "Temp Written Blocks": 0,
+      "Plans": [
+        {
+          "Node Type": "Seq Scan",
+          "Parent Relationship": "Outer",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Relation Name": "fx_notiz",
+          "Alias": "fx_notiz",
+          "Startup Cost": 0,
+          "Total Cost": 59.5,
+          "Plan Rows": 1546,
+          "Plan Width": 38,
+          "Actual Startup Time": 0.024,
+          "Actual Total Time": 0.241,
+          "Actual Rows": 1000,
+          "Actual Loops": 1,
+          "Filter": "(id <= 1000)",
+          "Rows Removed by Filter": 1000,
+          "Shared Hit Blocks": 17,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        }
+      ]
+    },
+    "Planning": {
+      "Shared Hit Blocks": 22,
+      "Shared Read Blocks": 0,
+      "Shared Dirtied Blocks": 0,
+      "Shared Written Blocks": 0,
+      "Local Hit Blocks": 0,
+      "Local Read Blocks": 0,
+      "Local Dirtied Blocks": 0,
+      "Local Written Blocks": 0,
+      "Temp Read Blocks": 0,
+      "Temp Written Blocks": 0
+    },
+    "Planning Time": 0.233,
+    "Triggers": [
+      {
+        "Trigger Name": "fx_notiz_aenderung",
+        "Relation": "fx_notiz",
+        "Time": 6.856,
+        "Calls": 1000
+      }
+    ],
+    "Execution Time": 18.401
+  }
+]

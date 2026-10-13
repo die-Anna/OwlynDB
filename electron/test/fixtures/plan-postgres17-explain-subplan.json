@@ -1,0 +1,62 @@
+[
+  {
+    "Plan": {
+      "Node Type": "Index Only Scan",
+      "Parallel Aware": false,
+      "Async Capable": false,
+      "Scan Direction": "Forward",
+      "Index Name": "fx_kunden_pkey",
+      "Relation Name": "fx_kunden",
+      "Alias": "k",
+      "Startup Cost": 0.29,
+      "Total Cost": 20954.34,
+      "Plan Rows": 500,
+      "Plan Width": 36,
+      "Index Cond": "(id <= 500)",
+      "Plans": [
+        {
+          "Node Type": "Aggregate",
+          "Strategy": "Plain",
+          "Partial Mode": "Simple",
+          "Parent Relationship": "SubPlan",
+          "Subplan Name": "SubPlan 1",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 41.86,
+          "Total Cost": 41.87,
+          "Plan Rows": 1,
+          "Plan Width": 32,
+          "Plans": [
+            {
+              "Node Type": "Bitmap Heap Scan",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Relation Name": "fx_bestellungen",
+              "Alias": "b",
+              "Startup Cost": 4.37,
+              "Total Cost": 41.84,
+              "Plan Rows": 10,
+              "Plan Width": 5,
+              "Recheck Cond": "(kunde_id = k.id)",
+              "Plans": [
+                {
+                  "Node Type": "Bitmap Index Scan",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Index Name": "ix_fx_kunde",
+                  "Startup Cost": 0,
+                  "Total Cost": 4.37,
+                  "Plan Rows": 10,
+                  "Plan Width": 0,
+                  "Index Cond": "(kunde_id = k.id)"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+]

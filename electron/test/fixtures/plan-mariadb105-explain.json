@@ -1,0 +1,55 @@
+{
+  "query_block": {
+    "select_id": 1,
+    "window_functions_computation": {
+      "sorts": {
+        "filesort": {
+          "sort_key": "t.s desc"
+        }
+      },
+      "temporary_table": {
+        "table": {
+          "table_name": "k",
+          "access_type": "index",
+          "possible_keys": ["PRIMARY"],
+          "key": "uq_kunden_name",
+          "key_length": "402",
+          "used_key_parts": ["name"],
+          "rows": 2500,
+          "filtered": 100,
+          "using_index": true
+        },
+        "table": {
+          "table_name": "<derived2>",
+          "access_type": "ref",
+          "possible_keys": ["key0"],
+          "key": "key0",
+          "key_length": "4",
+          "used_key_parts": ["kunde_id"],
+          "ref": ["shop.k.id"],
+          "rows": 10,
+          "filtered": 100,
+          "attached_condition": "t.s > 500",
+          "materialized": {
+            "query_block": {
+              "select_id": 2,
+              "having_condition": "s > 500",
+              "filesort": {
+                "sort_key": "bestellungen.kunde_id",
+                "temporary_table": {
+                  "table": {
+                    "table_name": "bestellungen",
+                    "access_type": "ALL",
+                    "possible_keys": ["fk_best_kunde"],
+                    "rows": 6000,
+                    "filtered": 100
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

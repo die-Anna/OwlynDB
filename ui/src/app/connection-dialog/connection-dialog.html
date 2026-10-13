@@ -1,0 +1,247 @@
+@if (state.editing() !== null) {
+  <div class="backdrop" (mousedown)="onBackdrop($event)">
+    <form class="dialog" appModal (dismiss)="close()" (ngSubmit)="save()" autocomplete="off">
+      <header>
+        <h2>{{ isNew() ? 'Neue Verbindung' : 'Verbindung bearbeiten' }}</h2>
+        <button type="button" class="btn icon" (click)="close()" title="Schließen"><app-icon name="close" /></button>
+      </header>
+
+      <div class="types">
+        @for (d of dialects; track d[0]) {
+          <button type="button" class="type" [class.on]="form().dialect === d[0]" (click)="setDialect(d[0])">{{ d[1] }}</button>
+        }
+      </div>
+
+      <div class="grid">
+        <label for="cd-name">Name</label>
+        <input id="cd-name" type="text" name="name" [ngModel]="form().name" (ngModelChange)="patch({ name: $event })" [placeholder]="defaultName()" autofocus />
+
+        <label for="cd-host">{{ form().options?.ssh ? 'Ziel' : 'Server' }}</label>
+        <div class="hostport" [title]="form().options?.ssh ? 'Datenbank aus Sicht des SSH-Servers, meist localhost' : ''">
+          <input id="cd-host" type="text" name="host" [ngModel]="form().host" (ngModelChange)="patch({ host: $event })" required />
+          <label for="cd-port" class="dim">Port</label>
+          <input id="cd-port" type="number" name="port" class="port" [ngModel]="form().port" (ngModelChange)="patch({ port: $event })" />
+        </div>
+
+        @if (!apiKey()) {
+          <label for="cd-user">Benutzer</label>
+          <input id="cd-user" type="text" name="user" [ngModel]="form().user" (ngModelChange)="patch({ user: $event })" [placeholder]="es() ? 'leer = ohne Anmeldung' : ''" />
+        }
+
+        <label for="cd-password">{{ apiKey() ? 'API-Key' : 'Passwort' }}</label>
+        <input
+          id="cd-password"
+          type="password"
+          name="password"
+          [ngModel]="form().password"
+          (ngModelChange)="patch({ password: $event }); passwordTouched.set(true)"
+          [placeholder]="!isNew() && hasStoredPassword() ? '•••••• (gespeichert, leer lassen = behalten)' : apiKey() ? 'Base64 („encoded“) oder id:schlüssel' : ''"
+        />
+
+        @if (!es()) {
+          <label for="cd-database">Datenbank</label>
+          <input
+            id="cd-database"
+            type="text"
+            name="database"
+            [ngModel]="form().database"
+            (ngModelChange)="patch({ database: $event })"
+            [placeholder]="form().dialect === 'postgres' ? 'postgres' : 'optional'"
+          />
+        }
+
+        <label>Optionen</label>
+        <div class="checks">
+          @if (es()) {
+            <label class="check"><input type="checkbox" name="ssl" [ngModel]="!!form().options?.ssl" (ngModelChange)="setOption('ssl', $event)" /> HTTPS</label>
+            <label class="check" title="Anmeldung mit einem API-Key von Elasticsearch statt Benutzer und Passwort">
+              <input type="checkbox" name="apiKey" [ngModel]="!!form().options?.apiKey" (ngModelChange)="setOption('apiKey', $event)" /> API-Key statt Benutzer
+            </label>
+          } @else if (form().dialect === 'mssql') {
+            <label class="check"><input type="checkbox" name="encrypt" [ngModel]="!!form().options?.encrypt" (ngModelChange)="setOption('encrypt', $event)" /> verschlüsseln</label>
+            <label class="check"
+              ><input type="checkbox" name="trust" [ngModel]="!!form().options?.trustServerCertificate" (ngModelChange)="setOption('trustServerCertificate', $event)" /> Serverzertifikat
+              vertrauen</label
+            >
+          } @else {
+            <label class="check"><input type="checkbox" name="ssl" [ngModel]="!!form().options?.ssl" (ngModelChange)="setOption('ssl', $event)" /> TLS/SSL</label>
+          }
+        </div>
+        @if (plainMssql()) {
+          <span></span>
+          <div class="note warn">Ohne Verschlüsselung gehen Passwort (nur leicht verschleiert) und Daten im Klartext über das Netz.</div>
+        }
+
+        <label>Sicherheit</label>
+        <div class="checks">
+          @if (es()) {
+            <span class="dim">Nur lesen: OwlynDB schickt an Elasticsearch nur lesende Anfragen (GET, _search, _count, _sql …).</span>
+          } @else {
+            <label class="check" title="Abfrage-Tabs führen nur SELECT &amp; Co. aus; jede Ausführung läuft in einer Transaktion, die zurückgerollt wird">
+              <input type="checkbox" name="readOnly" [ngModel]="!!form().options?.readOnly" (ngModelChange)="setOption('readOnly', $event)" /> Nur lesen
+              <span class="dim">(nur SELECT &amp; Co., Änderungen werden zurückgerollt)</span>
+            </label>
+          }
+        </div>
+
+        <label>Proxy</label>
+        <div class="checks">
+          @if (!es()) {
+            <label class="check" title="Die ganze Verbindung läuft von Anfang an über TLS – für einen Proxy (z. B. nginx, HAProxy, stunnel), der das Client-Zertifikat prüft">
+              <input type="checkbox" name="tunnel" [ngModel]="!!form().options?.tunnel" (ngModelChange)="setOption('tunnel', $event)" /> TLS-Tunnel mit Client-Zertifikat
+            </label>
+          }
+          <label class="check" title="Wie ssh -L: die Datenbank wird über einen SSH-Server erreicht">
+            <input type="checkbox" name="ssh" [ngModel]="!!form().options?.ssh" (ngModelChange)="setOption('ssh', $event)" /> SSH-Tunnel
+          </label>
+        </div>
+
+        @if (form().options?.ssh) {
+          <span></span>
+          <div class="note">
+            Ziel = {{ es() ? 'Elasticsearch' : 'Datenbank' }} aus Sicht des SSH-Servers (z. B. localhost {{ es() ? 9200 : 1433 }}).{{ form().options?.tunnel ? ' SSH läuft im TLS-Tunnel zum Proxy (wie ProxyCommand openssl s_client).' : '' }}
+          </div>
+
+          <label for="cd-ssh-host">SSH-Server</label>
+          <div class="hostport">
+            <input id="cd-ssh-host" type="text" name="sshHost" [ngModel]="form().options?.sshHost ?? ''" (ngModelChange)="setOption('sshHost', $event)" [placeholder]="form().options?.tunnel ? 'Proxy, z. B. 203.0.113.5' : 'ssh.example.com'" />
+            <label for="cd-ssh-port" class="dim">Port</label>
+            <input id="cd-ssh-port" type="number" name="sshPort" class="port" [ngModel]="form().options?.sshPort ?? 22" (ngModelChange)="setOption('sshPort', $event)" />
+          </div>
+
+          <label for="cd-ssh-user">SSH-Benutzer</label>
+          <input id="cd-ssh-user" type="text" name="sshUser" [ngModel]="form().options?.sshUser ?? ''" (ngModelChange)="setOption('sshUser', $event)" />
+
+          <label for="cd-ssh-key">SSH-Schlüssel</label>
+          <div class="file">
+            <input id="cd-ssh-key" type="text" name="sshKeyFile" class="mono" [ngModel]="form().options?.sshKeyFile ?? ''" (ngModelChange)="setOption('sshKeyFile', $event)" placeholder="leer = ~/.ssh/id_ed25519, id_ecdsa, id_rsa" [title]="form().options?.sshKeyFile ?? ''" />
+            <button type="button" class="btn" (click)="pick('sshKeyFile')">Datei …</button>
+          </div>
+
+          <label for="cd-ssh-secret">SSH-Passwort</label>
+          <input
+            id="cd-ssh-secret"
+            type="password"
+            name="sshSecret"
+            [ngModel]="form().sshSecret"
+            (ngModelChange)="patch({ sshSecret: $event }); sshSecretTouched.set(true)"
+            [placeholder]="!isNew() && hasStoredSshSecret() ? '•••••• (gespeichert, leer lassen = behalten)' : 'Passwort des Schlüssels oder des Benutzers, falls nötig'"
+          />
+        }
+
+        @if (tlsOn()) {
+          <span></span>
+          <div class="note">
+            {{ form().options?.tunnel ? 'Zertifikate und Prüfung gelten für den TLS-Tunnel zum Proxy.' : es() ? 'Zertifikate gelten für HTTPS (auch für einen Proxy davor, der das Client-Zertifikat prüft).' : 'Zertifikate gelten für TLS im Datenbank-Protokoll.' }}
+          </div>
+
+          @if (form().options?.tunnel || es()) {
+            <label for="cd-servername">SNI-Name</label>
+            <input
+              id="cd-servername"
+              type="text"
+              name="servername"
+              [ngModel]="form().options?.servername ?? ''"
+              (ngModelChange)="setOption('servername', $event)"
+              placeholder="optional, wie openssl -servername (sonst der Servername)"
+            />
+          }
+
+          @if (certPossible()) {
+            <label>Prüfen</label>
+            <div class="checks">
+              <label class="check" title="Serverzertifikat gegen die CA prüfen; aus = nur verschlüsseln">
+                <input type="checkbox" name="verifyServer" [ngModel]="!!form().options?.verifyServer" (ngModelChange)="setOption('verifyServer', $event)" /> Serverzertifikat
+              </label>
+              <label class="check" [class.off]="!form().options?.verifyServer" title="Zertifikat muss auf den Servernamen ausgestellt sein">
+                <input
+                  type="checkbox"
+                  name="verifyHostname"
+                  [disabled]="!form().options?.verifyServer"
+                  [ngModel]="!!form().options?.verifyHostname"
+                  (ngModelChange)="setOption('verifyHostname', $event)"
+                />
+                Hostname
+              </label>
+            </div>
+          }
+
+          <label for="cd-ca">CA</label>
+          <div class="file">
+            <input id="cd-ca" type="text" name="caFile" class="mono" [ngModel]="form().options?.caFile ?? ''" (ngModelChange)="setOption('caFile', $event)" placeholder="optional, PEM" [title]="form().options?.caFile ?? ''" />
+            <button type="button" class="btn" (click)="pick('caFile')">Datei …</button>
+          </div>
+
+          @if (certPossible()) {
+            <label for="cd-cert">Client-Zert.</label>
+            <div class="file">
+              <input id="cd-cert" type="text" name="certFile" class="mono" [ngModel]="form().options?.certFile ?? ''" (ngModelChange)="setOption('certFile', $event)" placeholder="nur wenn der Server eins verlangt – PEM oder PKCS#12 (.p12/.pfx)" [title]="form().options?.certFile ?? ''" />
+              <button type="button" class="btn" (click)="pick('certFile')">Datei …</button>
+            </div>
+
+            <label for="cd-key">Schlüssel</label>
+            <div class="file">
+              <input
+                id="cd-key"
+                type="text"
+                name="keyFile"
+                class="mono"
+                [disabled]="p12()"
+                [ngModel]="p12() ? '' : (form().options?.keyFile ?? '')"
+                (ngModelChange)="setOption('keyFile', $event)"
+                [placeholder]="p12() ? 'steckt in der .p12/.pfx' : 'privater Schlüssel, PEM (leer = in der Zertifikatsdatei)'"
+                [title]="p12() ? '' : (form().options?.keyFile ?? '')"
+              />
+              <button type="button" class="btn" [disabled]="p12()" (click)="pick('keyFile')">Datei …</button>
+            </div>
+
+            @if (form().options?.keyFile || form().options?.certFile) {
+              <label for="cd-passphrase">{{ p12() ? 'P12-Passwort' : 'Schlüssel-PW' }}</label>
+              <input
+                id="cd-passphrase"
+                type="password"
+                name="keyPassphrase"
+                [ngModel]="form().keyPassphrase"
+                (ngModelChange)="patch({ keyPassphrase: $event }); passphraseTouched.set(true)"
+                [placeholder]="!isNew() && hasStoredPassphrase() ? '•••••• (gespeichert, leer lassen = behalten)' : p12() ? 'Passwort der .p12/.pfx' : 'nur bei geschütztem Schlüssel'"
+              />
+            }
+          } @else {
+            <span></span>
+            <div class="note">SQL Server selbst nimmt kein Client-Zertifikat an. Die CA prüft hier nur das Serverzertifikat (dafür „Serverzertifikat vertrauen“ ausschalten). Für einen Proxy mit Client-Zertifikat: TLS-Tunnel einschalten.</div>
+          }
+        }
+
+        <label>Farbe</label>
+        <div class="colors">
+          @for (c of colors; track c) {
+            <button type="button" class="swatch" [class.on]="(form().color || '') === c" [style.background]="c || 'transparent'" [title]="c ? c : 'keine'" (click)="patch({ color: c })"></button>
+          }
+          <span class="dim hint">z. B. rot für Produktion</span>
+        </div>
+      </div>
+
+      @if (result(); as r) {
+        <div class="result" [class.ok]="r.ok">{{ r.text }}</div>
+      }
+
+      <footer>
+        <button type="button" class="btn" (click)="test()" [disabled]="busy()">Testen</button>
+        <span class="grow"></span>
+        <button type="button" class="btn" (click)="close()">Abbrechen</button>
+        @if (!isNew()) {
+          <button
+            type="button"
+            class="btn"
+            title="Die Eingaben als neue Verbindung speichern (gespeicherte Passwörter werden übernommen); die bisherige bleibt unverändert"
+            (click)="saveAsCopy()"
+            [disabled]="busy() || !form().host"
+          >
+            Als Kopie speichern
+          </button>
+        }
+        <button type="submit" class="btn primary" [disabled]="busy() || !form().host">Speichern</button>
+      </footer>
+    </form>
+  </div>
+}

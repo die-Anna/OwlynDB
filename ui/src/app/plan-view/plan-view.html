@@ -1,0 +1,146 @@
+<div class="head">
+  @if (plan().statements.length > 1) {
+    <div class="stmts">
+      @for (s of plan().statements; track $index) {
+        <button type="button" [class.on]="$index === index()" [class.bad]="!!s.error" [title]="s.sql" (click)="pick($index)">{{ $index + 1 }}</button>
+      }
+    </div>
+  }
+  <span class="kind" [class.live]="analyzed()">{{ analyzed() ? 'mit Laufzeit' : 'geschätzt' }}</span>
+  <span class="dim sum">{{ summary() }}</span>
+  <span class="grow"></span>
+  @if (stmt()?.root && !showRaw() && (canCollapse() || !allOpen())) {
+    <button type="button" class="btn small" (click)="toggleAll()">{{ allOpen() ? 'Zuklappen' : 'Alles aufklappen' }}</button>
+  }
+  @if (stmt()?.raw) {
+    <button type="button" class="btn small" [class.on]="showRaw()" title="Ausgabe der Datenbank, z. B. zum Weitergeben" (click)="showRaw.set(!showRaw())">Rohtext</button>
+    <button type="button" class="btn small" title="Ausgabe der Datenbank in die Zwischenablage" (click)="copyRaw()">
+      <app-icon name="copy" [size]="12" /> {{ copied() ? 'Kopiert' : 'Kopieren' }}
+    </button>
+  }
+</div>
+
+@if (stmt(); as s) {
+  @if (plan().statements.length > 1 || s.error) {
+    <div class="sql mono" [title]="s.sql">{{ shortSql(s.sql) }}</div>
+  }
+  @if (s.error) {
+    <div class="error-box">{{ s.error }}@if (syntaxError(s.error)) {<div class="dim why">Einen Plan gibt es für Abfragen und Datenänderungen (SELECT, INSERT, UPDATE, DELETE …), nicht für z. B. SHOW, SET oder DDL.</div>}</div>
+  }
+  @for (n of s.notes; track $index) {
+    <div class="note"><app-icon name="warn" [size]="13" /><span>{{ n }}</span></div>
+  }
+  @if (showRaw()) {
+    <pre class="raw mono">{{ s.raw }}</pre>
+  } @else if (s.root) {
+    <div class="body">
+      <div class="tree" #tree tabindex="0" (keydown)="onKey($event)">
+        <table>
+          <thead>
+            <tr>
+              <th class="step">Schritt</th>
+              <th class="num" title="geschätzte Zeilen je Durchlauf">Zeilen geschätzt</th>
+              @if (analyzed()) {
+                <th class="num" title="tatsächliche Zeilen je Durchlauf">tatsächlich</th>
+                <th class="num">Durchläufe</th>
+                <th class="num" title="mit den Schritten darunter, über alle Durchläufe">Zeit ms</th>
+              }
+              <th class="num" title="geschätzte Kosten mit den Schritten darunter (Einheit der Datenbank)">Kosten</th>
+              <th class="share" [title]="s.shareBy === 'time' ? 'Anteil dieses Schritts allein an der gemessenen Zeit' : 'Anteil dieses Schritts allein an den geschätzten Kosten'">
+                Anteil
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (r of rows(); track r.id) {
+              <tr [class]="heat(r.node)" [class.sel]="r.node === selected()" (click)="select(r)" (dblclick)="toggle(r)">
+                <td class="step" [style.padding-left.px]="6 + r.depth * 16" [title]="r.node.op + (r.node.detail ? '\n' + r.node.detail : '')">
+                  @if (r.node.children.length) {
+                    <button type="button" class="tw" [class.open]="r.open" (click)="toggle(r, $event)" tabindex="-1"><app-icon name="chevron" [size]="12" /></button>
+                  } @else {
+                    <span class="tw"></span>
+                  }
+                  <span class="op">{{ r.node.op }}</span>
+                  @if (r.node.detail) {
+                    <span class="detail">{{ r.node.detail }}</span>
+                  }
+                  @if (r.node.warnings.length) {
+                    <span class="warn" [title]="r.node.warnings.join('\n')"><app-icon name="warn" [size]="12" /></span>
+                  }
+                </td>
+                <td class="num">{{ rowsText(r.node.rows) }}</td>
+                @if (analyzed()) {
+                  <td class="num" [class.bad]="misestimated(r.node)">{{ rowsText(r.node.actualRows) }}</td>
+                  <td class="num">{{ r.node.loops !== undefined ? rowsText(r.node.loops) : '' }}</td>
+                  <td class="num">{{ ms(r.node.timeMs) }}</td>
+                }
+                <td class="num">{{ cost(r.node.cost) }}</td>
+                <td class="share">
+                  @if (r.node.share !== undefined) {
+                    <span class="bar"><i [style.width.%]="barWidth(r.node.share)"></i></span>
+                    <span class="pct">{{ pct(r.node.share) }}</span>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <div class="details">
+        @if (selected(); as n) {
+          <div class="d-op">{{ n.op }}</div>
+          @if (n.detail) {
+            <div class="d-detail mono">{{ n.detail }}</div>
+          }
+          @for (w of n.warnings; track $index) {
+            <div class="d-warn"><app-icon name="warn" [size]="12" /><span>{{ w }}</span></div>
+          }
+          <table class="kv">
+            @if (n.share !== undefined) {
+              <tr><th>Anteil</th><td>{{ pct(n.share) }} {{ s.shareBy === 'time' ? 'der Zeit' : 'der Kosten' }}</td></tr>
+            }
+            @if (n.rows !== undefined) {
+              <tr><th>Zeilen geschätzt</th><td>{{ rowsText(n.rows) }}</td></tr>
+            }
+            @if (n.actualRows !== undefined) {
+              <tr><th>Zeilen tatsächlich</th><td>{{ rowsText(n.actualRows) }}</td></tr>
+            }
+            @if (n.loops !== undefined) {
+              <tr><th>Durchläufe</th><td>{{ rowsText(n.loops) }}</td></tr>
+            }
+            @if (n.timeMs !== undefined) {
+              <tr><th>Zeit mit darunter</th><td>{{ ms(n.timeMs) }} ms</td></tr>
+            }
+            @if (n.selfMs !== undefined) {
+              <tr><th>Zeit nur hier</th><td>{{ ms(n.selfMs) }} ms</td></tr>
+            }
+            @if (n.cost !== undefined) {
+              <tr><th>Kosten</th><td>{{ cost(n.cost) }}</td></tr>
+            }
+          </table>
+          @if (n.props.length) {
+            <div class="d-sub">Angaben der Datenbank</div>
+            <table class="kv props">
+              @for (p of n.props; track $index) {
+                <tr><th>{{ p[0] }}</th><td>{{ p[1] }}</td></tr>
+              }
+            </table>
+          }
+        } @else {
+          <div class="dim">Schritt anklicken für Details.</div>
+        }
+      </div>
+    </div>
+  }
+} @else {
+  <div class="hint dim">
+    @if (plan().cancelled) {
+      Abgebrochen.
+    } @else {
+      Kein Plan.
+    }
+  </div>
+}
+@for (m of plan().messages; track $index) {
+  <div class="msg mono">{{ m }}</div>
+}

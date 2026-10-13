@@ -1,0 +1,5 @@
+-> Filter: (k.id <= 500)  (cost=100 rows=500)
+    -> Covering index range scan on k using PRIMARY over (id <= 500)  (cost=100 rows=500)
+-> Select #2 (subquery in projection; dependent)
+    -> Aggregate: max(b.betrag)  (cost=3.74 rows=1)
+        -> Index lookup on b using ix_fx_kunde (kunde_id=k.id)  (cost=2.91 rows=8.31)

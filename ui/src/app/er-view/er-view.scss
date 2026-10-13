@@ -1,0 +1,301 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.schema {
+  max-width: 200px;
+}
+
+.focus {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 2px 1px 10px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent) 22%, var(--bg));
+  font-size: 12px;
+  white-space: nowrap;
+
+  .btn.icon {
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border-radius: 10px;
+  }
+}
+
+.search {
+  width: 180px;
+
+  &.none {
+    border-color: var(--danger);
+  }
+}
+
+.hits {
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.zoom {
+  min-width: 42px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  color: var(--fg-dim);
+}
+
+.grow {
+  flex: 1;
+}
+
+.dim {
+  color: var(--fg-dim);
+}
+
+.notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px 4px 12px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--ok) 14%, var(--bg));
+  font-size: 12px;
+
+  &.warn {
+    background: color-mix(in srgb, var(--warn) 16%, var(--bg));
+  }
+
+  .text {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    user-select: text;
+  }
+}
+
+.canvas {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--bg);
+  cursor: grab;
+  outline: none;
+  user-select: none;
+
+  &:active {
+    cursor: grabbing;
+  }
+
+  svg.er {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--fg-dim);
+  pointer-events: none;
+}
+
+// ---------- Diagramm ----------
+
+.box {
+  cursor: pointer;
+
+  .body {
+    fill: var(--bg-2);
+  }
+
+  .head {
+    fill: color-mix(in srgb, var(--accent) 24%, var(--bg-2));
+  }
+
+  .frame {
+    fill: none;
+    stroke: color-mix(in srgb, var(--fg-dim) 55%, var(--border));
+    stroke-width: 1;
+  }
+
+  .title {
+    font: 600 12px var(--font);
+    fill: var(--fg);
+  }
+
+  .rows {
+    font: 11px var(--font);
+    fill: var(--fg-dim);
+  }
+
+  .rowbg {
+    fill: transparent;
+  }
+
+  .col:hover .rowbg,
+  .more:hover .rowbg {
+    fill: var(--bg-hover);
+  }
+
+  .name {
+    font: 12px var(--font);
+    fill: var(--fg);
+
+    &.pkname {
+      font-weight: 600;
+    }
+  }
+
+  .type {
+    font: 11px var(--mono);
+    fill: var(--fg-dim);
+  }
+
+  .pk,
+  .fk {
+    fill: none;
+    stroke-width: 2.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .pk {
+    stroke: var(--warn);
+  }
+
+  .fk {
+    stroke: var(--accent);
+  }
+
+  .more text {
+    font: italic 11px var(--font);
+    fill: var(--accent);
+  }
+
+  &.ext {
+    .body {
+      fill: var(--bg);
+    }
+
+    .head {
+      fill: var(--bg-2);
+    }
+
+    .frame {
+      stroke-dasharray: 4 3;
+    }
+
+    .title {
+      font-style: italic;
+      fill: var(--fg-dim);
+    }
+  }
+
+  &.sel .frame {
+    stroke: var(--accent);
+    stroke-width: 2.5;
+  }
+
+  &.near .frame {
+    stroke: color-mix(in srgb, var(--accent) 65%, var(--border));
+    stroke-width: 1.5;
+  }
+
+  &.match .head {
+    fill: color-mix(in srgb, var(--warn) 50%, var(--bg-2));
+  }
+
+  &.cur .frame {
+    stroke: var(--warn);
+    stroke-width: 2.5;
+  }
+
+  &.dim {
+    opacity: 0.28;
+  }
+}
+
+.edge {
+  .hit {
+    fill: none;
+    stroke: transparent;
+    stroke-width: 10;
+  }
+
+  .line,
+  .ends {
+    fill: none;
+    stroke: var(--fg-dim);
+    stroke-width: 1.3;
+  }
+
+  .dot {
+    fill: var(--bg);
+    stroke: var(--fg-dim);
+    stroke-width: 1.3;
+  }
+
+  &:hover,
+  &.hl {
+    .line,
+    .ends,
+    .dot {
+      stroke: var(--accent);
+      stroke-width: 2;
+    }
+  }
+
+  &.dim {
+    opacity: 0.15;
+  }
+}
+
+.foot {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 4px 8px;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+
+  .warn-text {
+    color: var(--warn);
+  }
+
+  .legend {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--fg-dim);
+
+    svg {
+      margin-left: 6px;
+      fill: none;
+      stroke: var(--fg-dim);
+      stroke-width: 1.3;
+
+      circle {
+        fill: var(--bg);
+      }
+    }
+  }
+}

@@ -1,0 +1,141 @@
+# Test-Datenbanken für OwlynDB (nur lokal, Wegwerf-Passwörter; Projektname und Passwörter heißen aus historischen Gründen noch dbviewer-test)
+# Start: npm run testdb:up   Stopp: npm run testdb:down
+name: dbviewer-test
+
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: dbviewer-test
+    ports:
+      - "127.0.0.1:15306:3306"
+
+  postgres:
+    image: postgres:17.11-alpine
+    environment:
+      POSTGRES_PASSWORD: dbviewer-test
+    ports:
+      - "127.0.0.1:15432:5432"
+
+  # MariaDB: gleicher Treiber wie MySQL, aber z. B. eigener Ausführungsplan (nur FORMAT=JSON, ANALYZE statt EXPLAIN ANALYZE)
+  mariadb:
+    image: mariadb:11.8.9
+    environment:
+      MARIADB_ROOT_PASSWORD: dbviewer-test
+    ports:
+      - "127.0.0.1:15307:3306"
+
+  # TLS-Testserver mit Pflicht zum Client-Zertifikat (vorher: bash dev/make-certs.sh)
+  mysql-tls:
+    image: mysql:8.4
+    profiles: [tls]
+    environment:
+      MYSQL_ROOT_PASSWORD: dbviewer-test
+    command: ["--ssl-ca=/certs/ca.crt", "--ssl-cert=/certs/server.crt", "--ssl-key=/certs/server.key"]
+    volumes:
+      - ./certs:/certs:ro
+      - ./tls/mysql-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "127.0.0.1:15316:3306"
+
+  postgres-tls:
+    image: postgres:17.11-alpine
+    profiles: [tls]
+    environment:
+      POSTGRES_PASSWORD: dbviewer-test
+    # PostgreSQL verlangt einen Schlüssel mit Rechten 600, die Windows-Freigabe liefert das nicht: erst kopieren
+    entrypoint:
+      - sh
+      - -c
+      - >-
+        mkdir -p /srv/tls && cp /certs/server.crt /certs/server.key /certs/ca.crt /tls/pg_hba.conf /srv/tls/ &&
+        chown -R postgres /srv/tls && chmod 600 /srv/tls/server.key &&
+        exec docker-entrypoint.sh postgres -c ssl=on -c ssl_cert_file=/srv/tls/server.crt
+        -c ssl_key_file=/srv/tls/server.key -c ssl_ca_file=/srv/tls/ca.crt -c hba_file=/srv/tls/pg_hba.conf
+    volumes:
+      - ./certs:/certs:ro
+      - ./tls:/tls:ro
+      - ./tls/pg-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "127.0.0.1:15442:5432"
+
+  # echter HAProxy mit Client-Zertifikatspflicht vor den drei normalen Test-Datenbanken
+  haproxy:
+    image: haproxy:3.2-alpine
+    profiles: [tls]
+    volumes:
+      - ./certs:/certs:ro
+      - ./tls/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    ports:
+      - "127.0.0.1:15336:3306"
+      - "127.0.0.1:15462:5432"
+      - "127.0.0.1:15463:1433"
+      - "127.0.0.1:15472:6432"
+      - "127.0.0.1:15473:6306"
+      - "127.0.0.1:15474:6433"
+      - "127.0.0.1:15422:2222"
+      - "127.0.0.1:15423:2223"
+      # Elasticsearch 8.10 (Profil elastic) per HTTPS mit Client-Zertifikat
+      - "127.0.0.1:15925:9200"
+    depends_on: [mysql, postgres, mssql, ssh]
+
+  # SSH-Server für den SSH-Tunnel; direkt auf 15022, über HAProxy (TLS + SNI) auf 15422
+  ssh:
+    build: ./ssh
+    profiles: [tls]
+    volumes:
+      - ./certs:/certs:ro
+    ports:
+      - "127.0.0.1:15022:22"
+
+  # Elasticsearch (Profil elastic), wenig Speicher – am besten einzeln starten: npm run testdb:es -- es8
+  # 7.17 und 8.10 ohne Security wie ein Dev-Cluster; 9.5 mit Passwort, API-Keys und HTTPS (Test-CA)
+  es7:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.28
+    profiles: [elastic]
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ingest.geoip.downloader.enabled: "false"
+      ES_JAVA_OPTS: "-Xms256m -Xmx256m"
+    ports:
+      - "127.0.0.1:15920:9200"
+
+  es8:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.10.4
+    profiles: [elastic]
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ingest.geoip.downloader.enabled: "false"
+      ES_JAVA_OPTS: "-Xms256m -Xmx256m"
+    ports:
+      - "127.0.0.1:15921:9200"
+
+  es9:
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.5.5
+    profiles: [elastic]
+    environment:
+      discovery.type: single-node
+      ELASTIC_PASSWORD: dbviewer-test
+      xpack.security.enabled: "true"
+      xpack.security.http.ssl.enabled: "true"
+      xpack.security.http.ssl.key: certs/server.key
+      xpack.security.http.ssl.certificate: certs/server.crt
+      xpack.security.http.ssl.certificate_authorities: certs/ca.crt
+      ingest.geoip.downloader.enabled: "false"
+      ES_JAVA_OPTS: "-Xms384m -Xmx384m"
+    volumes:
+      - ./certs:/usr/share/elasticsearch/config/certs:ro
+    ports:
+      - "127.0.0.1:15922:9200"
+
+  # ACCEPT_EULA=Y: Zustimmung zur Microsoft-Lizenz für SQL Server (Developer-Edition) – nur für diese lokalen Tests
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Dbviewer-Test1"
+      MSSQL_PID: Developer
+    ports:
+      - "127.0.0.1:15433:1433"

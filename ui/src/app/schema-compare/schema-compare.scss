@@ -1,0 +1,179 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.side {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  .lbl {
+    min-width: 44px;
+    color: var(--fg-dim);
+    font-weight: 600;
+  }
+
+  select {
+    height: 26px;
+    max-width: 200px;
+  }
+}
+
+.note {
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--fg-dim);
+  border-bottom: 1px solid var(--border);
+}
+
+.hint {
+  padding: 24px;
+}
+
+.dim {
+  color: var(--fg-dim);
+}
+
+.grow {
+  flex: 1;
+}
+
+.split {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.list {
+  width: 42%;
+  min-width: 320px;
+  overflow-y: auto;
+  border-right: 1px solid var(--border);
+}
+
+.summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.warn {
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--warn);
+}
+
+.empty {
+  padding: 16px 12px;
+}
+
+.group {
+  padding: 10px 12px 4px;
+  font-weight: 600;
+  color: var(--fg-dim);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.item {
+  padding: 3px 12px;
+
+  &.off .name {
+    color: var(--fg-faint);
+  }
+
+  .line {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .name {
+    cursor: pointer;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.badge {
+  flex: none;
+  padding: 0 6px;
+  border-radius: 8px;
+  font-size: 11px;
+  white-space: nowrap;
+
+  &.s-onlySource {
+    background: color-mix(in srgb, var(--ok) 22%, transparent);
+  }
+
+  &.s-onlyTarget {
+    background: color-mix(in srgb, var(--danger) 22%, transparent);
+  }
+
+  &.s-different {
+    background: color-mix(in srgb, var(--warn) 28%, transparent);
+  }
+}
+
+.details {
+  margin: 3px 0 6px 28px;
+  padding: 0 0 0 14px;
+  font-size: 12px;
+  color: var(--fg-dim);
+  user-select: text;
+
+  li + li {
+    margin-top: 2px;
+  }
+}
+
+.link {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.scriptpane {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .check {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .editor {
+    flex: 1;
+    min-height: 0;
+  }
+}

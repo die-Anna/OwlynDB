@@ -1,0 +1,26 @@
+node_modules/
+dist-electron/
+ui/dist/
+ui/.angular/
+release/
+dev/certs/
+dev/shots/
+
+# Zertifikate, Schlüssel, Zugangsdaten
+*.pfx
+*.p12
+*.key
+*.pem
+.env
+.env.*
+
+# Protokolle, Sicherungen
+*.log
+backup/
+
+# Benutzerdaten aus dem Profil (nie einchecken)
+connections.json
+saved-queries.json
+history.jsonl
+ui-theme.json
+ssh-host-keys.json

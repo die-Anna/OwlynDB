@@ -1,0 +1,211 @@
+<div class="toolbar">
+  @if (!running()) {
+    <button type="button" class="btn primary" [title]="'Ausführen: alles bzw. Markierung (F5, Strg+Umschalt+Enter)' | keys" [disabled]="!sessionId()" (click)="execute('all')">
+      <app-icon name="play" /> Ausführen
+    </button>
+    <button type="button" class="btn" [title]="'Anweisung unter dem Cursor ausführen (Strg+Enter)' | keys" [disabled]="!sessionId()" (click)="execute('current')">Aktuelle Anweisung</button>
+    @if (!es()) {
+      <button type="button" class="btn" [title]="'Ausführungsplan der Anweisung unter dem Cursor bzw. der Markierung (Strg+L) – führt nichts aus' | keys" [disabled]="!sessionId()" (click)="explain(false)">
+        <app-icon name="plan" /> Plan
+      </button>
+      <button type="button" class="btn icon" [title]="'Plan mit Laufzeit (Strg+M): führt die Anweisung aus und misst jeden Schritt' | keys" [disabled]="!sessionId()" (click)="explain(true)">
+        <app-icon name="timer" />
+      </button>
+    }
+  } @else {
+    <button type="button" class="btn danger" (click)="cancel($event)" title="Laufende Abfrage abbrechen"><app-icon name="stop" /> Abbrechen</button>
+    <span class="dim mono">{{ (elapsed() / 1000).toFixed(1) }} s</span>
+  }
+  <button type="button" class="btn icon" [title]="'SQL formatieren – alles bzw. Markierung (Umschalt+Alt+F)' | keys" (click)="format()"><app-icon name="format" /></button>
+  <button type="button" class="btn icon" [class.on]="panel() === 'history'" title="Verlauf" (click)="togglePanel('history')"><app-icon name="history" /></button>
+  <button type="button" class="btn icon" [class.on]="panel() === 'saved'" [title]="'Gespeicherte Abfragen (Strg+S speichert)' | keys" (click)="togglePanel('saved')"><app-icon name="star" /></button>
+  <span class="sep"></span>
+  @if (!es()) {
+    <span class="dim">Datenbank</span>
+    <select [disabled]="!sessionId() || running()" (change)="changeDatabase($any($event.target).value, $any($event.target))">
+      @if (!database()) {
+        <option value="" selected>–</option>
+      }
+      @for (d of databases(); track d) {
+        <option [value]="d" [selected]="d === database()">{{ d }}</option>
+      }
+      @if (database() && !databases().includes(database()!)) {
+        <option [value]="database()" selected>{{ database() }}</option>
+      }
+    </select>
+  }
+  <span class="dim">max. Zeilen</span>
+  <select (change)="setMaxRows($any($event.target).value)">
+    @for (n of maxRowOptions; track n) {
+      <option [value]="n" [selected]="n === maxRows()">{{ fmtNum(n) }}</option>
+    }
+  </select>
+  <span class="grow"></span>
+  @if (es()) {
+    <span class="ro" title="Elasticsearch: OwlynDB schickt nur lesende Anfragen (GET, _search, _count, _sql …); alles Schreibende wird abgelehnt."
+      ><app-icon name="lock" /> Nur lesen</span
+    >
+  } @else if (readOnly()) {
+    <span class="ro" title="Sicherheitsmodus der Verbindung: nur SELECT &amp; Co.; jede Ausführung läuft in einer Transaktion, die zurückgerollt wird. Ausschalten im Verbindungsdialog."
+      ><app-icon name="lock" /> Nur lesen</span
+    >
+  }
+  @if (inTransaction()) {
+    <span class="tx" title="In diesem Tab ist eine Transaktion offen. Ohne COMMIT gehen die Änderungen beim Schließen verloren; Sperren bleiben bis dahin bestehen.">Transaktion offen</span>
+  }
+  @if (connecting()) {
+    <span class="dim">verbindet …</span>
+  }
+  <span class="dim conn">{{ state.connection(tab().connectionId)?.name }}</span>
+</div>
+
+@if (sessionError()) {
+  <div class="error-box">
+    {{ sessionError() }}
+    <button type="button" class="btn" (click)="connect()">Neu verbinden</button>
+  </div>
+} @else if (!sessionId() && !connecting() && run()) {
+  <div class="error-box">
+    Die Sitzung wurde beendet.
+    <button type="button" class="btn" (click)="connect()">Neu verbinden</button>
+  </div>
+}
+
+<div class="body">
+<div class="split">
+  <app-sql-editor
+    class="editor"
+    [style.height.%]="editorPct()"
+    [value]="tab().initialSql"
+    [language]="es() ? 'es-console' : 'sql'"
+    [completion]="completionSource"
+    (changed)="onText($event)"
+    (ready)="onEditorReady($event)"
+  />
+  <div class="handle" (mousedown)="startDrag($event)"></div>
+
+  <div class="results">
+    @if (notice(); as n) {
+      <div class="notice">{{ n }}<button type="button" class="btn icon" title="Ausblenden" (click)="notice.set(null)"><app-icon name="close" [size]="12" /></button></div>
+    }
+    @if (run() || plan()) {
+      <div class="rtabs">
+        @if (run()) {
+          @for (set of results(); track $index) {
+            <button type="button" [class.on]="view() === 'result' && resultIndex() === $index" (click)="selectResult($index)">
+              {{ resultLabel(set, $index) }}
+              @if (set.text === undefined) {
+                <span class="dim">{{ fmtNum(set.rows.length) }}{{ set.truncated ? '+' : '' }}</span>
+              }
+            </button>
+          }
+          <button type="button" [class.on]="view() === 'messages'" [class.bad]="!!failed()" (click)="pane.set('messages')">
+            Meldungen
+            @if (failed()) {
+              <span class="badge">Fehler</span>
+            }
+          </button>
+        }
+        @if (plan(); as p) {
+          <button type="button" class="plantab" [class.on]="view() === 'plan'" [class.bad]="planFailed()" (click)="pane.set('plan')">
+            <app-icon name="plan" [size]="12" /> Plan{{ p.analyzed ? ' mit Laufzeit' : '' }}
+            <span class="x" title="Plan schließen" (click)="closePlan($event)"><app-icon name="close" [size]="11" /></span>
+          </button>
+        }
+        <span class="grow"></span>
+        @if (view() !== 'plan') {
+          <span class="dim summary">{{ summary() }}</span>
+        }
+        @if (view() === 'result' && results().length && results()[resultIndex()]?.text === undefined) {
+          <button type="button" class="btn icon exp" title="Ergebnis exportieren" (click)="exportResult()"><app-icon name="download" /></button>
+        }
+      </div>
+
+      @if (view() === 'plan') {
+        <app-plan-view class="grid" [plan]="plan()!" />
+      } @else if (view() === 'messages' && run(); as r) {
+        <div class="messages">
+          @for (s of shownStatements(); track s.statementIndex) {
+            <div class="msg" [class.err]="!!s.error">
+              <span class="state">{{ s.error ? '✗' : '✓' }}</span>
+              <div class="body">
+                <div>
+                  Anweisung {{ s.statementIndex + 1 }}
+                  @if (stmtLines().get(s.statementIndex); as line) {
+                    <span class="dim">(Zeile {{ line }})</span>
+                  }
+                  ·
+                  @if (s.error) {
+                    <b>Fehler</b>
+                  } @else if (s.resultSets) {
+                    {{ s.resultSets }} Ergebnis{{ s.resultSets === 1 ? '' : 'se' }}
+                  } @else if (s.rowsAffected !== undefined) {
+                    {{ fmtNum(s.rowsAffected) }} Zeilen betroffen
+                  } @else {
+                    ok
+                  }
+                  <span class="dim">· {{ fmtNum(s.durationMs) }} ms</span>
+                </div>
+                @if (s.error) {
+                  <div class="errtext">{{ s.error }}</div>
+                }
+                <div class="sql mono">{{ s.sql.length > 300 ? s.sql.slice(0, 300) + ' …' : s.sql }}</div>
+              </div>
+            </div>
+          }
+          @if (r.statements.length > shownStatements().length) {
+            <div class="msg"><span class="state">…</span><div class="body dim">{{ r.statements.length - shownStatements().length }} weitere Anweisungen ohne Fehler nicht aufgeführt</div></div>
+          }
+          @for (m of r.messages; track $index) {
+            <div class="msg info"><span class="state">i</span><div class="body mono">{{ m }}</div></div>
+          }
+          @if (r.cancelled && !failed()) {
+            <div class="msg err"><span class="state">■</span><div class="body">Abgebrochen.</div></div>
+          }
+        </div>
+      } @else {
+        @for (set of results(); track $index) {
+          @if ($index === resultIndex()) {
+            @if (set.text !== undefined) {
+              <!-- Elasticsearch: Antwort als JSON bzw. Text (_cat), mit Falten und Suche (Strg+F) -->
+              <app-sql-editor class="grid" [value]="set.text" [readOnly]="true" [language]="set.textFormat === 'json' ? 'json' : 'plaintext'" />
+            } @else {
+              <app-result-grid class="grid" [columns]="set.columns" [rows]="set.rows" (exportRequest)="exportResult()" />
+            }
+          }
+        }
+      }
+    } @else {
+      @if (es()) {
+        <div class="hint">
+          <p><b>F5</b> führt alles aus, <b>{{ 'Strg+Enter' | keys }}</b> die Anfrage bzw. Anweisung unter dem Cursor.</p>
+          <p>Anfragen wie in der Kibana-Konsole: Zeile <span class="mono">GET kunden/_search</span>, darunter der JSON-Body. Dazwischen geht auch SQL (<span class="mono">SELECT … FROM "kunden"</span>, getrennt mit <span class="mono">;</span>).</p>
+          <p>Treffer und Aggregationen erscheinen als Tabellen, daneben die ganze Antwort als JSON. Nur lesend: schreibende Anfragen lehnt OwlynDB ab.</p>
+          <p>{{ 'Strg+Leertaste' | keys }} zeigt Indizes, Endpunkte, Felder und Query-DSL.</p>
+        </div>
+      } @else {
+        <div class="hint">
+          <p><b>F5</b> oder <b>{{ 'Strg+Umschalt+Enter' | keys }}</b> führt alles aus, <b>{{ 'Strg+Enter' | keys }}</b> nur die Anweisung unter dem Cursor.</p>
+          <p>Ist Text markiert, läuft nur die Markierung. Mehrere Anweisungen werden mit <span class="mono">;</span> getrennt{{ dialect() === 'mssql' ? ' (Batches mit GO)' : dialect() === 'mysql' ? ' (DELIMITER wird verstanden)' : '' }}.</p>
+          <p>{{ 'Strg+Leertaste' | keys }} zeigt Tabellen und Spalten.</p>
+          <p><b>{{ 'Strg+L' | keys }}</b> zeigt den Ausführungsplan der Anweisung, <b>{{ 'Strg+M' | keys }}</b> den Plan mit Laufzeit (führt sie dabei aus).</p>
+        </div>
+      }
+    }
+  </div>
+</div>
+@if (panel(); as p) {
+  <app-query-library
+    [connectionId]="tab().connectionId"
+    [dialect]="dialect()"
+    [mode]="p"
+    (modeChange)="panel.set($event)"
+    [currentSql]="currentSql"
+    [refresh]="historyTick()"
+    [saveRequest]="saveTick()"
+    (insert)="insertSql($event)"
+    (openNew)="openFromLibrary($event)"
+    (close)="panel.set(null)"
+  />
+}
+</div>

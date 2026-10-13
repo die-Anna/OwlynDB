@@ -1,0 +1,72 @@
+[
+  {
+    "Plan": {
+      "Node Type": "Limit",
+      "Parallel Aware": false,
+      "Async Capable": false,
+      "Startup Cost": 0,
+      "Total Cost": 4274,
+      "Plan Rows": 1000,
+      "Plan Width": 9,
+      "Actual Startup Time": 0.011,
+      "Actual Total Time": 12.839,
+      "Actual Rows": 28572,
+      "Actual Loops": 1,
+      "Shared Hit Blocks": 1274,
+      "Shared Read Blocks": 0,
+      "Shared Dirtied Blocks": 0,
+      "Shared Written Blocks": 0,
+      "Local Hit Blocks": 0,
+      "Local Read Blocks": 0,
+      "Local Dirtied Blocks": 0,
+      "Local Written Blocks": 0,
+      "Temp Read Blocks": 0,
+      "Temp Written Blocks": 0,
+      "Plans": [
+        {
+          "Node Type": "Seq Scan",
+          "Parent Relationship": "Outer",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Relation Name": "fx_bestellungen",
+          "Alias": "fx_bestellungen",
+          "Startup Cost": 0,
+          "Total Cost": 4274,
+          "Plan Rows": 1000,
+          "Plan Width": 9,
+          "Actual Startup Time": 0.01,
+          "Actual Total Time": 10.492,
+          "Actual Rows": 28572,
+          "Actual Loops": 1,
+          "Filter": "((id % 7) = 3)",
+          "Rows Removed by Filter": 171428,
+          "Shared Hit Blocks": 1274,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        }
+      ]
+    },
+    "Planning": {
+      "Shared Hit Blocks": 3,
+      "Shared Read Blocks": 0,
+      "Shared Dirtied Blocks": 0,
+      "Shared Written Blocks": 0,
+      "Local Hit Blocks": 0,
+      "Local Read Blocks": 0,
+      "Local Dirtied Blocks": 0,
+      "Local Written Blocks": 0,
+      "Temp Read Blocks": 0,
+      "Temp Written Blocks": 0
+    },
+    "Planning Time": 0.098,
+    "Triggers": [],
+    "Execution Time": 14.274
+  }
+]

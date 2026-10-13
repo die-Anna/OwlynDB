@@ -1,0 +1,71 @@
+{
+  "query": "/* select#1 */ select count(0) AS `n` from `plan_fx`.`fx_kunden` semi join (`plan_fx`.`fx_bestellungen`) where ((`plan_fx`.`fx_kunden`.`id` = `plan_fx`.`fx_bestellungen`.`kunde_id`) and (`plan_fx`.`fx_bestellungen`.`status` = 'storniert') and (`plan_fx`.`fx_bestellungen`.`betrag` > 100.00))",
+  "inputs": [
+    {
+      "inputs": [
+        {
+          "inputs": [
+            {
+              "inputs": [
+                {
+                  "operation": "Table scan on fx_bestellungen",
+                  "table_name": "fx_bestellungen",
+                  "access_type": "table",
+                  "schema_name": "plan_fx",
+                  "used_columns": [
+                    "kunde_id",
+                    "status",
+                    "betrag"
+                  ],
+                  "estimated_rows": 218411.0,
+                  "estimated_total_cost": 22169.350000000002
+                }
+              ],
+              "condition": "((fx_bestellungen.`status` = 'storniert') and (fx_bestellungen.betrag > 100.00))",
+              "operation": "Filter: ((fx_bestellungen.`status` = 'storniert') and (fx_bestellungen.betrag > 100.00))",
+              "access_type": "filter",
+              "estimated_rows": 7279.638834647834,
+              "estimated_total_cost": 22169.350000000002
+            },
+            {
+              "covering": true,
+              "operation": "Single-row covering index lookup on fx_kunden using PRIMARY (id=fx_bestellungen.kunde_id)",
+              "index_name": "PRIMARY",
+              "table_name": "fx_kunden",
+              "access_type": "index",
+              "schema_name": "plan_fx",
+              "used_columns": [
+                "id"
+              ],
+              "estimated_rows": 1.0,
+              "lookup_condition": "id=fx_bestellungen.kunde_id",
+              "index_access_type": "index_lookup",
+              "estimated_total_cost": 0.2500137369452347
+            }
+          ],
+          "join_type": "inner join",
+          "operation": "Nested loop inner join",
+          "access_type": "join",
+          "estimated_rows": 7279.638834647834,
+          "join_algorithm": "nested_loop",
+          "estimated_total_cost": 24717.223592126746
+        }
+      ],
+      "tables": [
+        "fx_kunden"
+      ],
+      "operation": "Remove duplicate fx_kunden rows using temporary table (weedout)",
+      "access_type": "weedout",
+      "estimated_rows": 7279.638834647834,
+      "estimated_total_cost": 24717.223592126746
+    }
+  ],
+  "functions": [
+    "count(0)"
+  ],
+  "operation": "Aggregate: count(0)",
+  "query_type": "select",
+  "access_type": "aggregate",
+  "estimated_rows": 1.0,
+  "estimated_total_cost": 25445.18747559153
+}

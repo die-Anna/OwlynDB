@@ -1,0 +1,88 @@
+[
+  {
+    "Plan": {
+      "Node Type": "Sort",
+      "Parallel Aware": false,
+      "Async Capable": false,
+      "Startup Cost": 5006.45,
+      "Total Cost": 5006.46,
+      "Plan Rows": 4,
+      "Plan Width": 46,
+      "Sort Key": [
+        "(sum(b.betrag)) DESC"
+      ],
+      "Plans": [
+        {
+          "Node Type": "Aggregate",
+          "Strategy": "Hashed",
+          "Partial Mode": "Simple",
+          "Parent Relationship": "Outer",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 5006.36,
+          "Total Cost": 5006.41,
+          "Plan Rows": 4,
+          "Plan Width": 46,
+          "Group Key": [
+            "k.ort"
+          ],
+          "Planned Partitions": 0,
+          "Plans": [
+            {
+              "Node Type": "Hash Join",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Join Type": "Inner",
+              "Startup Cost": 559,
+              "Total Cost": 4507.98,
+              "Plan Rows": 66451,
+              "Plan Width": 11,
+              "Inner Unique": true,
+              "Hash Cond": "(b.kunde_id = k.id)",
+              "Plans": [
+                {
+                  "Node Type": "Seq Scan",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Relation Name": "fx_bestellungen",
+                  "Alias": "b",
+                  "Startup Cost": 0,
+                  "Total Cost": 3774,
+                  "Plan Rows": 66647,
+                  "Plan Width": 9,
+                  "Filter": "((status)::text = 'offen'::text)"
+                },
+                {
+                  "Node Type": "Hash",
+                  "Parent Relationship": "Inner",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Startup Cost": 309,
+                  "Total Cost": 309,
+                  "Plan Rows": 20000,
+                  "Plan Width": 10,
+                  "Plans": [
+                    {
+                      "Node Type": "Seq Scan",
+                      "Parent Relationship": "Outer",
+                      "Parallel Aware": false,
+                      "Async Capable": false,
+                      "Relation Name": "fx_kunden",
+                      "Alias": "k",
+                      "Startup Cost": 0,
+                      "Total Cost": 309,
+                      "Plan Rows": 20000,
+                      "Plan Width": 10
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+]

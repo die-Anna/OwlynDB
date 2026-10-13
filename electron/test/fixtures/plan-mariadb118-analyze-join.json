@@ -1,0 +1,69 @@
+{
+  "query_optimization": {
+    "r_total_time_ms": 0.320240515
+  },
+  "query_block": {
+    "select_id": 1,
+    "cost": 212.2957769,
+    "r_loops": 1,
+    "r_total_time_ms": 183.4403387,
+    "filesort": {
+      "sort_key": "sum(b.betrag) desc",
+      "r_loops": 1,
+      "r_total_time_ms": 0.020666519,
+      "r_used_priority_queue": false,
+      "r_output_rows": 4,
+      "r_buffer_size": "480",
+      "r_sort_mode": "sort_key,rowid",
+      "temporary_table": {
+        "nested_loop": [
+          {
+            "table": {
+              "table_name": "b",
+              "access_type": "ALL",
+              "possible_keys": ["ix_fx_kunde"],
+              "loops": 1,
+              "r_loops": 1,
+              "rows": 200187,
+              "r_rows": 200000,
+              "cost": 33.1610542,
+              "r_table_time_ms": 63.46369704,
+              "r_other_time_ms": 17.09087287,
+              "r_engine_stats": {
+                "pages_accessed": 523
+              },
+              "filtered": 100,
+              "r_total_filtered": 33.333,
+              "attached_condition": "b.`status` = 'offen'",
+              "r_filtered": 33.333
+            }
+          },
+          {
+            "table": {
+              "table_name": "k",
+              "access_type": "eq_ref",
+              "possible_keys": ["PRIMARY"],
+              "key": "PRIMARY",
+              "key_length": "4",
+              "used_key_parts": ["id"],
+              "ref": ["plan_fx.b.kunde_id"],
+              "loops": 200187,
+              "r_loops": 66666,
+              "rows": 1,
+              "r_rows": 1,
+              "cost": 179.1347227,
+              "r_table_time_ms": 57.84968129,
+              "r_other_time_ms": 44.98189451,
+              "r_engine_stats": {
+                "pages_accessed": 133605
+              },
+              "filtered": 100,
+              "r_total_filtered": 100,
+              "r_filtered": 100
+            }
+          }
+        ]
+      }
+    }
+  }
+}

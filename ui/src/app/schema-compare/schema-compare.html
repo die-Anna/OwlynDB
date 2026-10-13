@@ -1,0 +1,115 @@
+<div class="bar">
+  @for (which of ['src', 'dst']; track which) {
+    @let s = which === 'src' ? src() : dst();
+    <div class="side">
+      <span class="lbl">{{ which === 'src' ? 'Quelle' : 'Ziel' }}</span>
+      <select [value]="s.side.connectionId" (change)="setConnection($any(which), $any($event.target).value)" title="Verbindung">
+        @if (!s.side.connectionId) {
+          <option value="">– Verbindung –</option>
+        }
+        @for (c of which === 'src' ? state.sqlConnections() : targets(); track c.id) {
+          <option [value]="c.id" [selected]="c.id === s.side.connectionId">{{ c.name }}</option>
+        }
+      </select>
+      <select [value]="s.side.database" (change)="setDatabase($any(which), $any($event.target).value)" [disabled]="!s.databases.length" title="Datenbank">
+        @if (!s.side.database) {
+          <option value="">– Datenbank –</option>
+        }
+        @for (d of s.databases; track d) {
+          <option [value]="d" [selected]="d === s.side.database">{{ d }}</option>
+        }
+      </select>
+      @if (dialect() !== 'mysql') {
+        <select [value]="s.side.schema" (change)="setSchema($any(which), $any($event.target).value)" [disabled]="!s.schemas.length" title="Schema">
+          @for (x of s.schemas; track x) {
+            <option [value]="x" [selected]="x === s.side.schema">{{ x }}</option>
+          }
+        </select>
+      }
+    </div>
+    @if (which === 'src') {
+      <button type="button" class="btn icon" title="Quelle und Ziel tauschen" (click)="swap()"><app-icon name="swap" /></button>
+    }
+  }
+  <button type="button" class="btn primary" [disabled]="!ready() || loading() || sameSide()" (click)="run()">
+    <app-icon name="compare" /> {{ loading() ? 'vergleicht …' : 'Vergleichen' }}
+  </button>
+  <button type="button" class="btn" [disabled]="!ready() || sameSide()" (click)="compareData()" title="Daten aller Tabellen vergleichen, die es auf beiden Seiten gibt (neuer Tab)">
+    <app-icon name="datacompare" /> Daten vergleichen
+  </button>
+</div>
+<div class="note">
+  Das Abgleich-Skript macht das <b>Ziel</b> wie die <b>Quelle</b>. Es wird nur angezeigt – ausgeführt wird es erst, wenn du es im Abfrage-Tab
+  startest. Löschungen (Spalten und Objekte, die es nur im Ziel gibt) sind auskommentiert, bis du sie aktivierst.
+</div>
+@if (sameSide() && ready()) {
+  <div class="error-box">Quelle und Ziel sind gleich.</div>
+}
+@if (error()) {
+  <div class="error-box">{{ error() }}</div>
+}
+
+@if (result(); as r) {
+  <div class="split">
+    <div class="list">
+      <div class="summary">
+        <b>{{ r.items.length }}</b> Unterschied{{ r.items.length === 1 ? '' : 'e' }}
+        <span class="dim">· {{ r.same }} gleich</span>
+        <span class="grow"></span>
+        <button type="button" class="link" (click)="setAll(true)">alle</button>
+        <button type="button" class="link" (click)="setAll(false)">keine</button>
+      </div>
+      @if (r.warnings.length) {
+        <div class="warn">
+          @for (w of r.warnings; track $index) {
+            <div>{{ w }}</div>
+          }
+        </div>
+      }
+      @if (!r.items.length) {
+        <div class="empty dim">Keine Unterschiede in Tabellen, Views und Routinen.</div>
+      }
+      @for (g of groups; track g.title) {
+        @let items = itemsOf(g.kinds);
+        @if (items.length) {
+          <div class="group">{{ g.title }} <span class="dim">{{ items.length }}</span></div>
+          @for (i of items; track $index) {
+            <div class="item" [class.off]="!selected().has(i)">
+              <div class="line">
+                <input type="checkbox" [checked]="selected().has(i)" (change)="toggle(i, $any($event.target).checked)" />
+                <span class="badge s-{{ i.status }}">{{ statusText(i) }}</span>
+                <app-icon [name]="icon(i)" [size]="13" />
+                <span class="name" (click)="toggleOpen(i)">{{ label(i) }}</span>
+                @if (i.details.length) {
+                  <button type="button" class="link" (click)="toggleOpen(i)">{{ open().has(i) ? 'weniger' : i.details.length + ' Detail' + (i.details.length === 1 ? '' : 's') }}</button>
+                }
+              </div>
+              @if (open().has(i)) {
+                <ul class="details">
+                  @for (d of i.details; track $index) {
+                    <li>{{ d }}</li>
+                  }
+                </ul>
+              }
+            </div>
+          }
+        }
+      }
+    </div>
+    <div class="scriptpane">
+      <div class="toolbar">
+        <label class="check" title="DROP COLUMN/TABLE/VIEW … für alles, was es nur im Ziel gibt – Daten gehen verloren">
+          <input type="checkbox" [checked]="includeDrops()" (change)="includeDrops.set($any($event.target).checked)" /> Löschungen aktivieren
+        </label>
+        <span class="grow"></span>
+        <button type="button" class="btn" [disabled]="!selected().size" (click)="copyScript()"><app-icon name="copy" /> Kopieren</button>
+        <button type="button" class="btn primary" [disabled]="!selected().size" (click)="openScript()" [title]="'Neuer Abfrage-Tab auf ' + connName(dst().side.connectionId) + ' · ' + dst().side.database">
+          <app-icon name="query" /> Im Abfrage-Tab öffnen (Ziel)
+        </button>
+      </div>
+      <app-sql-editor class="editor" [value]="script()" [readOnly]="true" />
+    </div>
+  </div>
+} @else if (!loading()) {
+  <div class="hint dim">Quelle und Ziel wählen, dann „Vergleichen“. Verglichen werden Tabellen (Spalten, Primärschlüssel, Indizes, Fremdschlüssel), Views und Routinen.</div>
+}

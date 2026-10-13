@@ -1,0 +1,263 @@
+:root {
+  color-scheme: light;
+  --bg: #ffffff;
+  --bg-2: #f4f5f7;
+  --bg-3: #ebedf0;
+  --bg-hover: #e3e6ea;
+  --fg: #1f2328;
+  --fg-dim: #66707b;
+  --fg-faint: #9aa3ad;
+  --border: #d6dadf;
+  --accent: #2f6fdb;
+  --accent-fg: #ffffff;
+  --sel: #d8e5fb;
+  --danger: #c93c37;
+  --ok: #2b8a3e;
+  --warn: #b26b00;
+  --null: #a0a8b2;
+  --input-bg: #ffffff;
+  --shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
+  --font: 'Segoe UI', system-ui, sans-serif;
+  --mono: 'Cascadia Mono', Consolas, 'SF Mono', Menlo, 'DejaVu Sans Mono', 'Liberation Mono', 'Courier New', monospace;
+}
+
+@mixin dark {
+  color-scheme: dark;
+  --bg: #1e1f22;
+  --bg-2: #25272b;
+  --bg-3: #2d3035;
+  --bg-hover: #353840;
+  --fg: #dfe1e5;
+  --fg-dim: #9da3ad;
+  --fg-faint: #6c727b;
+  --border: #3a3d43;
+  --accent: #4d8af0;
+  --sel: #29406a;
+  --danger: #f06a64;
+  --ok: #5cc06e;
+  --warn: #e0a440;
+  --null: #6c727b;
+  --input-bg: #1b1c1f;
+  --shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+}
+
+/* dunkel: wie Windows, sofern nicht ausdrücklich hell gewählt (data-theme an <html>, siehe ui/theme.ts) – oder gewählt */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    @include dark;
+  }
+}
+
+:root[data-theme='dark'] {
+  @include dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font);
+  font-size: 13px;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+input[type='text'],
+input[type='password'],
+input[type='number'],
+input:not([type]),
+select,
+textarea {
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 3px 7px;
+  height: 26px;
+  outline: none;
+
+  &:focus {
+    border-color: var(--accent);
+  }
+}
+
+textarea {
+  height: auto;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-2);
+  cursor: pointer;
+  white-space: nowrap;
+
+  &:hover:not(:disabled) {
+    background: var(--bg-hover);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+
+  &.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-fg);
+
+    // Farbe behalten: das allgemeine :hover oben ist spezifischer als .primary
+    &:hover:not(:disabled) {
+      background: var(--accent);
+      filter: brightness(1.08);
+    }
+  }
+
+  &.danger {
+    color: var(--danger);
+  }
+
+  &.icon {
+    padding: 0 5px;
+    border-color: transparent;
+    background: transparent;
+
+    &:hover:not(:disabled) {
+      background: var(--bg-hover);
+    }
+  }
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-2);
+  min-height: 37px;
+  flex-wrap: wrap;
+
+  .sep {
+    width: 1px;
+    align-self: stretch;
+    margin: 2px 2px;
+    background: var(--border);
+  }
+
+  .grow {
+    flex: 1;
+  }
+
+  .dim {
+    color: var(--fg-dim);
+  }
+}
+
+.error-box {
+  margin: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--danger);
+  border-radius: 4px;
+  color: var(--danger);
+  white-space: pre-wrap;
+  font-family: var(--mono);
+  font-size: 12px;
+  user-select: text;
+}
+
+.mono {
+  font-family: var(--mono);
+}
+
+/* AG Grid: NULL und Zahlen */
+.ag-cell.is-null {
+  color: var(--null);
+  font-style: italic;
+}
+
+.ag-cell.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Bearbeiten: neue, gelöschte, geänderte Zeilen und Zellen */
+.ag-row.row-new .ag-cell {
+  background: color-mix(in srgb, var(--ok) 14%, transparent);
+}
+
+.ag-row.row-deleted .ag-cell {
+  text-decoration: line-through;
+  opacity: 0.5;
+}
+
+.ag-cell.changed {
+  background: color-mix(in srgb, var(--warn) 26%, transparent);
+}
+
+/* Datenvergleich: bisheriger Wert im Ziel unter der Zeile der Quelle */
+.ag-row.row-old .ag-cell {
+  color: var(--fg-dim);
+}
+
+.ag-row.row-old .ag-cell.changed {
+  text-decoration: line-through;
+}
+
+.ag-cell.is-default {
+  color: var(--fg-faint);
+  font-style: italic;
+}
+
+/* Spalte mit Fremdschlüssel: Strg+Klick öffnet die verwiesene Zeile */
+.ag-cell.fk {
+  text-decoration: underline dotted var(--fg-faint);
+  text-underline-offset: 3px;
+}
+
+.ag-header-cell.fk-head .ag-header-cell-text::after {
+  content: ' →';
+  color: var(--fg-faint);
+}
+
+.ag-cell.rownum {
+  color: var(--fg-faint);
+  text-align: right;
+}
+
+::-webkit-scrollbar {
+  width: 11px;
+  height: 11px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 6px;
+  border: 2px solid var(--bg);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Dialog mit dem Fokus (appModal): kein Rahmen um das ganze Fenster */
+[role='dialog']:focus {
+  outline: none;
+}

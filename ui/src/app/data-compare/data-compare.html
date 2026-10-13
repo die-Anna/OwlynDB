@@ -1,0 +1,352 @@
+<div class="bar">
+  <div class="mode" role="group" title="Eine Tabelle im Detail oder alle Tabellen des Schemas als Übersicht">
+    <button type="button" [class.on]="mode() === 'table'" [disabled]="busy()" (click)="setMode('table')">Tabelle</button>
+    <button type="button" [class.on]="mode() === 'schema'" [disabled]="busy()" (click)="setMode('schema')">ganzes Schema</button>
+  </div>
+  @for (which of ['src', 'dst']; track which) {
+    @let s = which === 'src' ? src() : dst();
+    @let w = $any(which);
+    <div class="side">
+      <span class="lbl">{{ which === 'src' ? 'Quelle' : 'Ziel' }}</span>
+      <select [value]="s.side.connectionId" (change)="setConnection(w, $any($event.target).value)" title="Verbindung">
+        @if (!s.side.connectionId) {
+          <option value="">– Verbindung –</option>
+        }
+        @for (c of state.sqlConnections(); track c.id) {
+          <option [value]="c.id" [selected]="c.id === s.side.connectionId">{{ c.name }}</option>
+        }
+      </select>
+      <select [value]="s.side.database" (change)="setDatabase(w, $any($event.target).value)" [disabled]="!s.databases.length" title="Datenbank">
+        @if (!s.side.database) {
+          <option value="">– Datenbank –</option>
+        }
+        @for (d of s.databases; track d) {
+          <option [value]="d" [selected]="d === s.side.database">{{ d }}</option>
+        }
+      </select>
+      @if (s.schemas.length) {
+        <select [value]="s.side.schema" (change)="setSchema(w, $any($event.target).value)" title="Schema">
+          @for (x of s.schemas; track x) {
+            <option [value]="x" [selected]="x === s.side.schema">{{ x }}</option>
+          }
+        </select>
+      }
+      @if (mode() === 'table') {
+        <select class="table" [value]="s.side.table" (change)="setTable(w, $any($event.target).value)" [disabled]="!s.tables.length" title="Tabelle">
+          @if (!s.side.table) {
+            <option value="">– Tabelle –</option>
+          }
+          @for (t of s.tables; track t) {
+            <option [value]="t" [selected]="t === s.side.table">{{ t }}</option>
+          }
+        </select>
+      } @else {
+        <span class="dim alltables">{{ s.tables.length ? 'alle ' + s.tables.length + ' Tabellen' : '' }}</span>
+      }
+    </div>
+    @if (which === 'src') {
+      <button type="button" class="btn icon" title="Quelle und Ziel tauschen" [disabled]="busy()" (click)="swap()"><app-icon name="swap" /></button>
+    }
+  }
+</div>
+
+<div class="opts">
+  @if (mode() === 'table') {
+    <span class="lbl" title="Zeilen von Quelle und Ziel werden über diese Spalten einander zugeordnet">Schlüssel</span>
+    <button type="button" class="btn pick" [class.on]="panel() === 'key'" [disabled]="!srcInfo()" (click)="panel.set(panel() === 'key' ? null : 'key')">
+      {{ keyLabel() }} <app-icon name="chevron" [size]="11" />
+    </button>
+    <span class="lbl">Spalten</span>
+    <button type="button" class="btn pick" [class.on]="panel() === 'cols'" [disabled]="!srcInfo()" (click)="panel.set(panel() === 'cols' ? null : 'cols')">
+      {{ colsLabel() }} <app-icon name="chevron" [size]="11" />
+    </button>
+    <span class="lbl">WHERE</span>
+    <input
+      type="text"
+      class="where mono"
+      placeholder="optional, gilt für beide Seiten"
+      title="Nur Zeilen vergleichen, für die die Bedingung gilt – in Quelle und Ziel (Enter vergleicht)"
+      [ngModel]="where()"
+      (ngModelChange)="where.set($event)"
+      (keydown.enter)="run()"
+    />
+  } @else {
+    <span class="dim">
+      Je Tabelle über den Primärschlüssel (bzw. einen eindeutigen Index) – für Tabellen ohne die Schlüsselspalten in der Übersicht wählen; alle
+      Spalten, die es auf beiden Seiten gibt.
+    </span>
+  }
+  <label class="check" title="'Meier' und 'meier' gelten als gleich (auch beim Zuordnen über den Schlüssel)">
+    <input type="checkbox" [ngModel]="ignoreCase()" (ngModelChange)="ignoreCase.set($event)" /> Groß/klein egal
+  </label>
+  <label class="check" title="'Huber' und 'Huber  ' gelten als gleich (z. B. char-Spalten, die mit Leerzeichen auffüllen)">
+    <input type="checkbox" [ngModel]="ignoreTrailing()" (ngModelChange)="ignoreTrailing.set($event)" /> Leerzeichen am Ende egal
+  </label>
+  <span class="grow"></span>
+  @if (running()) {
+    <button type="button" class="btn" (click)="cancel($event)"><app-icon name="stop" /> Abbrechen</button>
+  } @else {
+    <button type="button" class="btn primary" [disabled]="starting() || !ready() || sameTable()" (click)="run()"><app-icon name="datacompare" /> Vergleichen</button>
+  }
+
+  @if (panel(); as p) {
+    <div class="backdrop" (mousedown)="panel.set(null)"></div>
+    <div class="panel" [class.right]="p === 'cols'">
+      @if (p === 'key') {
+        <div class="ph">Zeilen werden über diese Spalten einander zugeordnet – sie müssen eine Zeile eindeutig bestimmen.</div>
+        <label class="check">
+          <input type="radio" name="keymode" [checked]="key() === null" [disabled]="!autoKey()" (change)="key.set(null)" />
+          automatisch: {{ autoKey()?.join(', ') ?? 'kein Primärschlüssel, kein eindeutiger Index' }}
+        </label>
+        <div class="cols">
+          @for (c of srcInfo()!.columns; track c.name) {
+            <label class="check">
+              <input type="checkbox" [checked]="keyHas(c.name)" (change)="toggleKey(c.name, $any($event.target).checked)" />
+              <span class="cname">{{ c.name }}</span> <span class="dim">{{ c.dataType }}</span>
+            </label>
+          }
+        </div>
+      } @else {
+        <div class="ph">
+          Nur die gewählten Spalten vergleichen; der Schlüssel zählt immer.
+          <button type="button" class="link" (click)="columns.set(null)">alle</button>
+        </div>
+        <div class="cols">
+          @for (c of srcInfo()!.columns; track c.name) {
+            <label class="check" [class.dimmed]="keyHas(c.name)">
+              <input type="checkbox" [checked]="colHas(c.name) || keyHas(c.name)" [disabled]="keyHas(c.name)" (change)="toggleCol(c.name, $any($event.target).checked)" />
+              <span class="cname">{{ c.name }}</span> <span class="dim">{{ c.dataType }}</span>
+            </label>
+          }
+        </div>
+      }
+    </div>
+  }
+</div>
+
+<div class="note">
+  Das Abgleich-Skript macht das <b>Ziel</b> wie die <b>Quelle</b> (INSERT, UPDATE, DELETE). Es wird nur angezeigt oder als Datei gespeichert –
+  ausgeführt wird es erst, wenn du es im Abfrage-Tab startest bzw. die Datei im Ziel einspielst. Gelesen wird nur; die Quelle wird dabei einmal,
+  das Ziel höchstens zweimal gelesen.
+</div>
+@if (sameTable() && ready()) {
+  <div class="error-box">Quelle und Ziel sind {{ mode() === 'schema' ? 'dasselbe Schema' : 'dieselbe Tabelle' }}.</div>
+}
+@if (error()) {
+  <div class="error-box">{{ error() }}</div>
+}
+@if (fileJob(); as f) {
+  <div class="filejob" [class.bad]="f.state === 'error'">
+    @if (f.state === 'running') {
+      <span>Skript wird geschrieben: {{ f.current }} · {{ fmt(f.statements) }} Anweisungen · {{ fmt(f.done) }} Zeilen gelesen</span>
+      <button type="button" class="btn" (click)="cancelFile()"><app-icon name="stop" /> Abbrechen</button>
+    } @else if (f.state === 'done') {
+      <span>
+        Skript gespeichert: {{ fmt(f.statements) }} Anweisungen · {{ secs(f.durationMs) }} · <span class="mono">{{ f.file }}</span>
+      </span>
+      <button type="button" class="btn" (click)="showFile(f.file!)">Im Ordner zeigen</button>
+      @if (f.statements) {
+        <button type="button" class="btn primary" (click)="importScript(f.file!)" title="Mit dem Dialog „SQL-Datei einspielen“ – fragt vorher nach">
+          <app-icon name="upload" /> Im Ziel einspielen …
+        </button>
+      }
+    } @else {
+      <span>Skript nicht geschrieben: {{ f.error }}</span>
+    }
+    <button type="button" class="btn icon" title="Ausblenden" [disabled]="f.state === 'running'" (click)="fileJob.set(null)"><app-icon name="close" [size]="12" /></button>
+    @if (f.state === 'done' && f.log.length) {
+      <div class="filelog dim">
+        @for (l of f.log; track $index) {
+          <div>{{ l }}</div>
+        }
+      </div>
+    }
+  </div>
+}
+
+@if (running()) {
+  @let j = job()!;
+  <div class="progress">
+    <div class="meter"><div class="fill" [style.width.%]="percent() ?? 100" [class.indef]="percent() === null"></div></div>
+    <div class="line">
+      {{ j.current }} · {{ fmt(j.done) }} Zeilen gelesen{{ j.total ? ' (Schätzung: bis ~' + fmt(j.total) + ')' : '' }}
+      <span class="dim">· {{ secs(j.durationMs) }}</span>
+    </div>
+  </div>
+}
+
+@if (mode() === 'schema') {
+  @if (allResult(); as a) {
+    <div class="summary">
+      <span><b>{{ a.tables.length }}</b> Tabellen verglichen · <b>{{ allDiffTables() }}</b> mit Unterschieden</span>
+      <span class="dim">· {{ secs(a.durationMs) }} · Zeile anklicken für die Einzelheiten</span>
+      <span class="grow"></span>
+      @if (stale()) {
+        <span class="stale" title="Quelle, Ziel oder Optionen wurden geändert">Auswahl geändert – neu vergleichen</span>
+      }
+      <label class="check" title="DELETE für die Zeilen, die es nur im Ziel gibt – sonst stehen sie auskommentiert im Skript">
+        <input type="checkbox" [ngModel]="includeDeletes()" (ngModelChange)="includeDeletes.set($event)" /> Löschungen aktivieren
+      </label>
+      <button type="button" class="btn" [disabled]="fileBusy() || !allDiffTables()" (click)="saveScript()" title="Abgleich-Skript aller Tabellen in eine Datei – Reihenfolge nach Fremdschlüsseln, ohne Obergrenze">
+        <app-icon name="download" /> Skript als Datei …
+      </button>
+    </div>
+    @if (a.onlySource.length || a.onlyTarget.length) {
+      <div class="warn">
+        @if (a.onlySource.length) {
+          <div>Nur in der Quelle, nicht verglichen: {{ a.onlySource.join(', ') }}</div>
+        }
+        @if (a.onlyTarget.length) {
+          <div>Nur im Ziel, nicht verglichen: {{ a.onlyTarget.join(', ') }}</div>
+        }
+      </div>
+    }
+    <div class="overview">
+      <table>
+        <thead>
+          <tr>
+            <th>Tabelle</th>
+            <th class="num">fehlen im Ziel</th>
+            <th class="num">nur im Ziel</th>
+            <th class="num">unterschiedlich</th>
+            <th class="num">gleich</th>
+            <th>Schlüssel · Hinweis</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (t of a.tables; track t.source) {
+            @let chosen = chosenKey(t);
+            <tr
+              [class.err]="!!t.error"
+              [class.diff]="!!t.counts && !!(t.counts.onlySource + t.counts.onlyTarget + t.counts.different)"
+              [class.picking]="keyPick()?.table === t.source"
+              (click)="openTable(t)"
+              [title]="t.noKey && !chosen ? 'Schlüsselspalten wählen' : 'Einzelheiten dieser Tabelle'"
+            >
+              <td class="name">{{ t.source }}{{ t.target !== t.source ? ' → ' + t.target : '' }}</td>
+              @if (t.counts; as c) {
+                <td class="num s-onlySource">{{ c.onlySource ? fmt(c.onlySource) : '' }}</td>
+                <td class="num s-onlyTarget">{{ c.onlyTarget ? fmt(c.onlyTarget) : '' }}</td>
+                <td class="num s-different">{{ c.different ? fmt(c.different) : '' }}</td>
+                <td class="num dim">{{ fmt(c.same) }}</td>
+                <td class="dim keycell" [title]="t.warnings.join('\n')">
+                  {{ t.key?.join(', ') }}{{ chosen ? ' (gewählt)' : '' }}{{ t.warnings.length ? ' · ' + t.warnings.length + ' Hinweis' + (t.warnings.length === 1 ? '' : 'e') : '' }}
+                  <button type="button" class="link change" [disabled]="busy()" (click)="$event.stopPropagation(); pickKey(t)" title="Andere Schlüsselspalten für diese Tabelle">
+                    Schlüssel …
+                  </button>
+                </td>
+              } @else {
+                <td colspan="5" class="errtext" [title]="t.error ?? ''">
+                  {{ t.noKey ? 'kein Primärschlüssel und kein eindeutiger Index – Schlüsselspalten wählen' : t.error }}
+                  @if (t.noKey || chosen) {
+                    <button type="button" class="btn small" [disabled]="busy()" (click)="$event.stopPropagation(); pickKey(t)">Schlüssel wählen …</button>
+                  }
+                </td>
+              }
+            </tr>
+            @if (keyPick(); as k) {
+              @if (k.table === t.source) {
+                <tr class="keypick">
+                  <td colspan="6">
+                    <div class="ph">
+                      Zeilen von <b>{{ t.source }}</b> werden über diese Spalten einander zugeordnet – zusammen müssen sie eine Zeile eindeutig
+                      bestimmen (sonst meldet der Vergleich doppelte Werte).
+                    </div>
+                    @if (k.columns; as cols) {
+                      <div class="cols">
+                        @for (c of cols; track c.name) {
+                          <label class="check">
+                            <input type="checkbox" [checked]="k.chosen.includes(c.name)" (change)="togglePick(c.name, $any($event.target).checked)" />
+                            <span class="cname">{{ c.name }}</span> <span class="dim">{{ c.dataType }}</span>
+                          </label>
+                        }
+                      </div>
+                      <div class="kpbar">
+                        <button type="button" class="link" (click)="pickAll()" title="Die ganze Zeile bestimmt sie – gleiche Zeilen dürfen dann nicht doppelt vorkommen">alle Spalten</button>
+                        @if (k.auto) {
+                          <button type="button" class="link" (click)="keyPick.set({ ...k, chosen: k.auto })">automatisch: {{ k.auto.join(', ') }}</button>
+                        }
+                        <span class="grow"></span>
+                        <button type="button" class="btn" (click)="keyPick.set(null)">Abbrechen</button>
+                        <button type="button" class="btn primary" [disabled]="busy() || !k.chosen.length" (click)="applyKey()">
+                          <app-icon name="datacompare" /> Vergleichen
+                        </button>
+                      </div>
+                    } @else {
+                      <div class="dim">Spalten werden gelesen …</div>
+                    }
+                  </td>
+                </tr>
+              }
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+  } @else if (!running()) {
+    <div class="hint dim">
+      Quell- und Zieldatenbank (bzw. Schema) wählen, dann „Vergleichen“: Alle Tabellen, die es auf beiden Seiten gibt, werden nacheinander
+      verglichen – je Tabelle über ihren Primärschlüssel; für Tabellen ohne wählst du die Schlüsselspalten in der Übersicht. Die Übersicht
+      zählt die Unterschiede; ein Klick auf eine Tabelle zeigt die Zeilen und das Skript, „Skript als Datei“ schreibt den Abgleich aller
+      Tabellen ohne Obergrenze.
+    </div>
+  }
+} @else if (result(); as r) {
+  <div class="summary">
+    <button type="button" class="chip" [class.on]="filter() === 'all'" (click)="filter.set('all')">Alle Unterschiede <b>{{ fmt(diffTotal()) }}</b></button>
+    <button type="button" class="chip s-onlySource" [class.on]="filter() === 'onlySource'" [disabled]="!r.counts.onlySource" (click)="filter.set('onlySource')">
+      fehlen im Ziel <b>{{ fmt(r.counts.onlySource) }}</b>
+    </button>
+    <button type="button" class="chip s-onlyTarget" [class.on]="filter() === 'onlyTarget'" [disabled]="!r.counts.onlyTarget" (click)="filter.set('onlyTarget')">
+      nur im Ziel <b>{{ fmt(r.counts.onlyTarget) }}</b>
+    </button>
+    <button type="button" class="chip s-different" [class.on]="filter() === 'different'" [disabled]="!r.counts.different" (click)="filter.set('different')">
+      unterschiedlich <b>{{ fmt(r.counts.different) }}</b>
+    </button>
+    <span class="dim">· {{ fmt(r.counts.same) }} gleich · Schlüssel {{ r.key.join(', ') }} · {{ secs(r.durationMs) }}</span>
+    <span class="grow"></span>
+    @if (stale()) {
+      <span class="stale" title="Quelle, Ziel oder Optionen wurden geändert">Auswahl geändert – neu vergleichen</span>
+    }
+  </div>
+  @if (r.warnings.length) {
+    <div class="warn">
+      @for (w of r.warnings; track $index) {
+        <div>{{ w }}</div>
+      }
+    </div>
+  }
+  @if (!diffTotal()) {
+    <div class="same">Keine Unterschiede – {{ fmt(r.counts.same) }} Zeile{{ r.counts.same === 1 ? '' : 'n' }} gleich.</div>
+  } @else {
+    <div class="split">
+      <app-result-grid class="grid" [columns]="gridColumns()" [rows]="gridRows()" [marks]="marks" [sortable]="false" (exportRequest)="exportRows()" />
+      <div class="scriptpane">
+        <div class="toolbar">
+          <b>Abgleich-Skript</b>
+          <span class="dim">für {{ connName(resultReq()!.target.connectionId) }} · {{ resultReq()!.target.database }}</span>
+          <span class="grow"></span>
+          @if (r.counts.onlyTarget) {
+            <label class="check" title="DELETE für die Zeilen, die es nur im Ziel gibt – sonst stehen sie auskommentiert im Skript">
+              <input type="checkbox" [ngModel]="includeDeletes()" (ngModelChange)="includeDeletes.set($event)" /> Löschungen aktivieren
+            </label>
+          }
+          <button type="button" class="btn" (click)="copyScript()"><app-icon name="copy" /> Kopieren</button>
+          <button type="button" class="btn" [disabled]="fileBusy()" (click)="saveScript()" title="Ganzes Abgleich-Skript ohne Obergrenze in eine Datei – danach lässt es sich im Ziel einspielen">
+            <app-icon name="download" /> Skript als Datei …
+          </button>
+          <button type="button" class="btn primary" (click)="openScript()" title="Neuer Abfrage-Tab auf der Zielverbindung">
+            <app-icon name="query" /> Im Abfrage-Tab öffnen (Ziel)
+          </button>
+        </div>
+        <app-sql-editor class="editor" [value]="script()" [readOnly]="true" />
+      </div>
+    </div>
+  }
+} @else if (!running()) {
+  <div class="hint dim">
+    Quell- und Zieltabelle wählen, dann „Vergleichen“. Die Zeilen werden über den Primärschlüssel einander zugeordnet (oder über
+    selbst gewählte Schlüsselspalten); verglichen werden alle Spalten, die es auf beiden Seiten gibt – auch über Verbindungen und
+    Datenbanktypen hinweg.
+  </div>
+}

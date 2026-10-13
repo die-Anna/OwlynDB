@@ -1,0 +1,381 @@
+@if (svc.target(); as t) {
+  <div class="backdrop" (mousedown)="onBackdrop($event)">
+    <form class="dialog wide" appModal (dismiss)="close()" (ngSubmit)="start()">
+      <header>
+        <h2>
+          {{ t.mode === 'dump' ? 'Dump erstellen' : t.mode === 'copy' ? 'Kopieren' : 'SQL-Datei einspielen' }}
+          <span class="dim">{{ conn()?.name }} · {{ t.database }}</span>
+        </h2>
+        <button type="button" class="btn icon" (click)="close()" [disabled]="running()" title="Schließen"><app-icon name="close" /></button>
+      </header>
+
+      @if (!job()) {
+        @if (t.mode !== 'import') {
+          <div class="grid">
+            <label>Objekte</label>
+            <div class="objects">
+              @if (loading()) {
+                <div class="dim">lädt …</div>
+              } @else {
+                <div class="bulk">
+                  <button type="button" class="link" (click)="setAll(true)">alle</button>
+                  <button type="button" class="link" (click)="setAll(false)">keine</button>
+                  <span class="dim">{{ selected().length }} von {{ items().length }} gewählt</span>
+                </div>
+                <div class="list">
+                  @for (s of schemas(); track s) {
+                    @if (s) {
+                      <div class="schema">
+                        {{ s }}
+                        <button type="button" class="link" (click)="setAll(true, s)">alle</button>
+                        <button type="button" class="link" (click)="setAll(false, s)">keine</button>
+                      </div>
+                    }
+                    @for (i of items(); track label(i)) {
+                      @if (i.schema === s) {
+                        <div class="item">
+                          <label class="pick">
+                            <input type="checkbox" [name]="'o-' + label(i)" [ngModel]="i.on" (ngModelChange)="toggle(i, $event)" />
+                            <app-icon [name]="i.kind === 'view' ? 'view' : 'table'" [size]="13" />
+                            <span class="name">{{ i.name }}</span>
+                            <span class="dim rows">{{ rows(i.rows) }}</span>
+                          </label>
+                          @if (i.on && i.kind === 'table' && content() !== 'structure') {
+                            <span class="rule" [class.part]="i.rule !== 'all'">
+                              <select [name]="'r-' + label(i)" [ngModel]="i.rule" (ngModelChange)="setRule(i, $event)" title="Welche Zeilen mitkommen">
+                                <option value="all">alle Zeilen</option>
+                                <option value="last">die letzten …</option>
+                                <option value="where">WHERE …</option>
+                                <option value="dependent" title="Zeilen, die auf mitkommende Zeilen einer Tabelle mit eigener Auswahl verweisen">abhängige Zeilen</option>
+                                <option value="none">keine Zeilen</option>
+                              </select>
+                              @if (i.rule === 'last') {
+                                <input type="number" class="count" min="1" [name]="'n-' + label(i)" [ngModel]="i.count" (ngModelChange)="setCount(i, $event)" />
+                                <span class="dim">nach</span>
+                                <select class="col" [name]="'c-' + label(i)" [ngModel]="i.column" (ngModelChange)="setColumn(i, $event)" title="absteigend sortiert">
+                                  @for (c of columnsOf(i); track c) {
+                                    <option [value]="c">{{ c }}</option>
+                                  }
+                                </select>
+                              } @else if (i.rule === 'where') {
+                                <input
+                                  type="text"
+                                  class="where mono"
+                                  [name]="'w-' + label(i)"
+                                  placeholder="z. B. datum >= '2026-01-01'"
+                                  [ngModel]="i.where"
+                                  (ngModelChange)="setWhere(i, $event)"
+                                />
+                              }
+                            </span>
+                          }
+                        </div>
+                      }
+                    }
+                  }
+                </div>
+                @if (partial()) {
+                  <div class="subset-note">
+                    <div class="dim note">
+                      Zeilen, auf die per Fremdschlüssel verwiesen wird, kommen immer mit (über alle Stufen, auch Selbstbezüge) – so passt die
+                      Test-Datenbank zusammen. „keine Zeilen“ heißt: nur diese. „abhängige Zeilen“ holt umgekehrt die Zeilen, die auf
+                      mitkommende Zeilen einer Tabelle mit eigener Auswahl verweisen – z. B. die Positionen der letzten 100 Bestellungen.
+                    </div>
+                    <label class="radio">
+                      <input type="checkbox" name="addref" [ngModel]="addReferenced()" (ngModelChange)="addReferenced.set($event)" />
+                      Tabellen ergänzen, auf die verwiesen wird, die aber nicht gewählt sind (nur die nötigen Zeilen)
+                    </label>
+                  </div>
+                }
+              }
+            </div>
+
+            <label>Inhalt</label>
+            <div class="radios row">
+              <label class="radio"><input type="radio" name="content" [checked]="content() === 'both'" (change)="content.set('both')" /> Struktur und Daten</label>
+              <label class="radio"><input type="radio" name="content" [checked]="content() === 'structure'" (change)="content.set('structure')" /> nur Struktur</label>
+              <label class="radio"><input type="radio" name="content" [checked]="content() === 'data'" (change)="content.set('data')" /> nur Daten</label>
+            </div>
+
+            @if (content() !== 'structure') {
+              <label>Anonymisieren</label>
+              <div class="anon">
+                <label class="radio">
+                  <input type="checkbox" name="anon" [ngModel]="anonOn()" (ngModelChange)="toggleAnon($event)" /> Personendaten ersetzen (z. B. für eine Test-Datenbank aus Prod)
+                </label>
+                @if (anonOn()) {
+                  <div class="anon-list">
+                    @for (a of anonItems(); track a.schema + '.' + a.table + '.' + a.column; let ix = $index) {
+                      <div class="anon-row">
+                        <span class="mono col" [title]="a.type + (isAdded(a) ? ' – Tabelle wird ergänzt (Fremdschlüssel)' : '')">
+                          {{ a.table }}.{{ a.column }}
+                          @if (isAdded(a)) {
+                            <span class="dim">(ergänzt)</span>
+                          }
+                        </span>
+                        <select [name]="'ar-' + ix" [ngModel]="a.rule" (ngModelChange)="setAnonRule(ix, $event)">
+                          @for (r of anonRules; track r.rule) {
+                            <option [value]="r.rule">{{ r.label }}</option>
+                          }
+                        </select>
+                        <button type="button" class="btn icon" title="Regel entfernen" (click)="removeAnon(ix)"><app-icon name="close" [size]="12" /></button>
+                      </div>
+                    } @empty {
+                      <div class="dim">{{ anonLoading() ? 'sucht passende Spalten …' : 'Keine Spalte vorgeschlagen – unten hinzufügen.' }}</div>
+                    }
+                  </div>
+                  <div class="anon-add">
+                    <select name="at" [ngModel]="addTable()" (ngModelChange)="pickAddTable($event)" title="Tabelle">
+                      <option value="">– Tabelle –</option>
+                      @for (ti of anonTables(); track itemKey(ti)) {
+                        <option [value]="itemKey(ti)">{{ label(ti) }}{{ ti.added ? ' (ergänzt)' : '' }}</option>
+                      }
+                    </select>
+                    <select name="ac" [ngModel]="addColumn()" (ngModelChange)="addColumn.set($event)" [disabled]="!addColumns().length" title="Spalte">
+                      <option value="">– Spalte –</option>
+                      @for (c of addColumns(); track c.name) {
+                        <option [value]="c.name">{{ c.name }}</option>
+                      }
+                    </select>
+                    <select name="ar" [ngModel]="addRule()" (ngModelChange)="addRule.set($event)" title="Ersatz">
+                      @for (r of anonRules; track r.rule) {
+                        <option [value]="r.rule">{{ r.label }}</option>
+                      }
+                    </select>
+                    <button type="button" class="btn" [disabled]="!addColumn()" (click)="addAnon()"><app-icon name="plus" /> Regel</button>
+                    <button type="button" class="link" [disabled]="anonLoading()" (click)="suggest()" title="Vorschläge für die jetzt gewählten und die ergänzten Tabellen hinzufügen">neu vorschlagen</button>
+                  </div>
+                  <div class="dim note">
+                    Gleicher Wert → gleicher Ersatz (je Lauf), auch in anderen Tabellen; Spalten, die per Fremdschlüssel daran hängen, folgen
+                    automatisch, ebenso Tabellen, die per Fremdschlüssel ergänzt werden. E-Mails gehen an example.invalid. Zahlen und
+                    Telefonnummern behalten Länge, Vorwahl und Schreibweise und bleiben eindeutig; ist eine Spalte eindeutig, bekommen Namen
+                    einen Prüfsummen-Anhang. Vorschläge kommen aus den Spaltennamen – bitte prüfen.
+                  </div>
+                }
+              </div>
+            }
+
+            @if (t.mode === 'dump') {
+            <label for="dump-target">Für</label>
+            <div class="radios">
+              <select id="dump-target" name="target" [ngModel]="targetDialect()" (ngModelChange)="targetDialect.set($event)">
+                @for (d of dialects; track d[0]) {
+                  <option [value]="d[0]">{{ d[1] }}{{ d[0] === dialect() ? ' (gleicher Typ)' : '' }}</option>
+                }
+              </select>
+              @if (targetDialect() !== dialect()) {
+                <div class="dim note">
+                  Spaltentypen werden übersetzt (z. B. boolean ↔ bit ↔ tinyint(1), text ↔ nvarchar(max)). Views, Ausdrucks-Indizes und nicht übersetzbare
+                  Standardwerte fallen weg – der Dump nennt sie als Hinweis.
+                </div>
+              }
+            </div>
+
+            <label>Optionen</label>
+            <div class="radios">
+              <label class="radio" [class.off]="content() === 'data'">
+                <input type="checkbox" name="drop" [disabled]="content() === 'data'" [ngModel]="dropFirst()" (ngModelChange)="dropFirst.set($event)" /> vorhandene Tabellen/Views vorher löschen (DROP … IF EXISTS)
+              </label>
+              <label class="radio" [class.off]="content() === 'data' || targetDialect() !== dialect()" title="nur beim gleichen Datenbanktyp; Trigger nur zu Tabellen im Dump">
+                <input
+                  type="checkbox"
+                  name="routines"
+                  [disabled]="content() === 'data' || targetDialect() !== dialect()"
+                  [ngModel]="routines() && content() !== 'data' && targetDialect() === dialect()"
+                  (ngModelChange)="routines.set($event)"
+                />
+                Prozeduren, Funktionen, Trigger
+              </label>
+              <label class="radio">
+                Zeilen pro INSERT
+                <input type="number" name="rpi" class="small" min="1" max="1000" [ngModel]="rowsPerInsert()" (ngModelChange)="rowsPerInsert.set(+$event)" />
+              </label>
+            </div>
+            } @else {
+            <label>Ziel</label>
+            <div class="radios">
+              <div class="target" [style.border-color]="targetConn()?.color || null">
+                <select name="tconn" class="tconn" [ngModel]="targetId()" (ngModelChange)="chooseTarget($event)">
+                  @for (c of state.sqlConnections(); track c.id) {
+                    <option [value]="c.id">{{ c.name }} ({{ dialectLabel(c.dialect) }}){{ c.options?.readOnly ? ' – nur lesen' : '' }}</option>
+                  }
+                </select>
+                <span class="dim">·</span>
+                @if (createTarget()) {
+                  <input type="text" name="tdb" class="mono" [ngModel]="targetDb()" (ngModelChange)="targetDb.set($event)" />
+                } @else {
+                  <select name="tdbsel" class="mono" [ngModel]="targetDb()" (ngModelChange)="targetDb.set($event)">
+                    @for (d of targetDbs() ?? []; track d) {
+                      <option [value]="d">{{ d }}</option>
+                    }
+                  </select>
+                }
+              </div>
+              <label class="radio">
+                <input type="checkbox" name="tcreate" [ngModel]="createTarget()" (ngModelChange)="setCreateTarget($event)" /> neue Datenbank anlegen
+              </label>
+              @if (targetDbs() === null) {
+                <div class="dim note">verbindet …</div>
+              } @else if (copyProblem(); as p) {
+                <div class="warn">{{ p }}</div>
+              }
+              @if (copyDialect() !== dialect()) {
+                <div class="dim note">
+                  {{ dialectLabel(dialect()) }} → {{ dialectLabel(copyDialect()) }}: Spaltentypen werden übersetzt. Views, Prozeduren, Ausdrucks-Indizes und
+                  nicht übersetzbare Standardwerte fallen weg – das Protokoll nennt sie.
+                </div>
+              }
+            </div>
+
+            <label>Optionen</label>
+            <div class="radios">
+              <label class="radio" [class.off]="content() === 'data'">
+                <input type="checkbox" name="cdrop" [disabled]="content() === 'data'" [ngModel]="dropFirst()" (ngModelChange)="dropFirst.set($event)" />
+                im Ziel vorhandene Tabellen/Views gleichen Namens vorher löschen
+              </label>
+              <label class="radio" [class.off]="content() === 'data' || copyDialect() !== dialect()" title="nur beim gleichen Datenbanktyp; Trigger nur zu kopierten Tabellen">
+                <input
+                  type="checkbox"
+                  name="croutines"
+                  [disabled]="content() === 'data' || copyDialect() !== dialect()"
+                  [ngModel]="routines() && content() !== 'data' && copyDialect() === dialect()"
+                  (ngModelChange)="routines.set($event)"
+                />
+                Prozeduren, Funktionen, Trigger
+              </label>
+              @if (copyDialect() !== 'mysql') {
+                <label class="radio" title="Bei einem Fehler wird im Ziel alles zurückgerollt – es bleibt nichts halb kopiert">
+                  <input type="checkbox" name="ctx" [ngModel]="transaction()" (ngModelChange)="transaction.set($event)" /> alles in einer Transaktion (Fehler = nichts übernommen)
+                </label>
+              }
+              <label class="radio" [class.off]="transaction() && copyDialect() !== 'mysql'">
+                <input
+                  type="checkbox"
+                  name="cstop"
+                  [disabled]="transaction() && copyDialect() !== 'mysql'"
+                  [ngModel]="stopOnError() || (transaction() && copyDialect() !== 'mysql')"
+                  (ngModelChange)="stopOnError.set($event)"
+                />
+                beim ersten Fehler aufhören (sonst überspringen und weitermachen)
+              </label>
+              <label class="radio">
+                Zeilen pro INSERT
+                <input type="number" name="crpi" class="small" min="1" max="1000" [ngModel]="rowsPerInsert()" (ngModelChange)="rowsPerInsert.set(+$event)" />
+              </label>
+            </div>
+            }
+          </div>
+        } @else {
+          <div class="grid">
+            @if (readOnly()) {
+              <span></span>
+              <div class="warn">Diese Verbindung steht auf „Nur lesen“ – Einspielen ist nicht möglich.</div>
+            }
+
+            <label for="dump-file">Datei</label>
+            <div class="file">
+              <input id="dump-file" type="text" name="file" class="mono" [ngModel]="file()" (ngModelChange)="file.set($event)" placeholder=".sql – auch aus mysqldump, pg_dump (Textformat), SSMS" />
+              <button type="button" class="btn" (click)="pickFile()">Datei …</button>
+            </div>
+
+            <label>Ziel</label>
+            <div class="radios">
+              <div class="target" [style.border-color]="conn()?.color || null">
+                <strong>{{ conn()?.name }}</strong>
+                <span class="dim">·</span>
+                <input type="text" name="db" class="mono" [ngModel]="database()" (ngModelChange)="database.set($event)" [readonly]="!createDatabase()" />
+              </div>
+              <label class="radio">
+                <input
+                  type="checkbox"
+                  name="create"
+                  [ngModel]="createDatabase()"
+                  (ngModelChange)="createDatabase.set($event); database.set($event ? t.database + '_kopie' : t.database)"
+                />
+                neue Datenbank anlegen
+              </label>
+            </div>
+
+            <label>Optionen</label>
+            <div class="radios">
+              @if (dialect() !== 'mysql') {
+                <label class="radio" title="Bei einem Fehler wird alles zurückgerollt – es bleibt nichts halb eingespielt">
+                  <input type="checkbox" name="tx" [ngModel]="transaction()" (ngModelChange)="transaction.set($event)" /> alles in einer Transaktion (Fehler = nichts übernommen)
+                </label>
+              }
+              <label class="radio" [class.off]="transaction() && dialect() !== 'mysql'">
+                <input
+                  type="checkbox"
+                  name="stop"
+                  [disabled]="transaction() && dialect() !== 'mysql'"
+                  [ngModel]="stopOnError() || (transaction() && dialect() !== 'mysql')"
+                  (ngModelChange)="stopOnError.set($event)"
+                />
+                beim ersten Fehler aufhören (sonst überspringen und weitermachen)
+              </label>
+              @if (dialect() !== 'postgres') {
+                <label class="radio" title="Dumps enthalten oft USE quelle, DROP/CREATE/ALTER DATABASE quelle – das würde die Quell-Datenbank wechseln oder löschen">
+                  <input type="checkbox" name="use" [ngModel]="skipUse()" (ngModelChange)="skipUse.set($event)" /> USE- und DATABASE-Anweisungen der Datei ignorieren
+                </label>
+              }
+            </div>
+          </div>
+        }
+      } @else {
+        @let j = job()!;
+        <div class="progress-box">
+          <div class="bar"><div class="fill" [style.width.%]="percent() ?? 100" [class.indef]="percent() === null && j.state === 'running'"></div></div>
+          <div class="line">
+            @if (j.kind === 'import') {
+              {{ bytes(j.done) }}{{ j.total ? ' von ' + bytes(j.total) : '' }} · {{ fmtNum(j.statements) }} Anweisungen
+            } @else {
+              {{ fmtNum(j.done) }}{{ j.total ? ' von ~' + fmtNum(j.total) : '' }} Zeilen{{ j.kind === 'copy' ? ' · ' + fmtNum(j.statements) + ' Anweisungen im Ziel' : '' }}
+            }
+            <span class="dim">· {{ j.current }} · {{ secs(j.durationMs) }}</span>
+          </div>
+          @if (j.state === 'done') {
+            <div class="result ok">
+              {{ j.kind === 'dump' ? 'Dump gespeichert.' : j.kind === 'copy' ? 'Kopiert.' : 'Eingespielt.' }}
+              @if (j.kind === 'dump') {
+                <div><span class="path mono">{{ j.file }}</span><button type="button" class="btn" (click)="showFile()">Im Ordner zeigen</button></div>
+              }
+            </div>
+          } @else if (j.state === 'error' || j.state === 'cancelled') {
+            <div class="result bad">{{ j.error }}</div>
+          }
+          @if (j.log.length) {
+            <div class="log">
+              @for (l of j.log; track $index) {
+                <div>{{ l }}</div>
+              }
+            </div>
+          }
+        </div>
+      }
+
+      @if (error()) {
+        <div class="result bad">{{ error() }}</div>
+      }
+
+      <footer>
+        <span class="grow"></span>
+        @if (running()) {
+          <button type="button" class="btn danger" (click)="cancel()"><app-icon name="stop" /> Abbrechen</button>
+        } @else if (job()) {
+          <button type="button" class="btn primary" (click)="close()">Schließen</button>
+        } @else {
+          <button type="button" class="btn" (click)="close()">Abbrechen</button>
+          @if (t.mode === 'dump') {
+            <button type="submit" class="btn primary" [disabled]="starting() || loading() || !selected().length"><app-icon name="download" /> Dump speichern …</button>
+          } @else if (t.mode === 'copy') {
+            <button type="submit" class="btn primary" [disabled]="starting() || loading() || !selected().length || targetDbs() === null || !!copyProblem()">
+              <app-icon name="copy" /> Kopieren
+            </button>
+          } @else {
+            <button type="submit" class="btn primary" [disabled]="starting() || readOnly() || !file() || !database().trim()">Einspielen</button>
+          }
+        }
+      </footer>
+    </form>
+  </div>
+}

@@ -1,0 +1,7 @@
+-> Aggregate: count(0)  (cost=20377 rows=1) (actual time=74.4..74.4 rows=1 loops=1)
+    -> Nested loop inner join  (cost=19815 rows=5627) (actual time=65.2..74.1 rows=4122 loops=1)
+        -> Table scan on <subquery2>  (cost=17773..17845 rows=5627) (actual time=65.2..65.9 rows=4122 loops=1)
+            -> Materialize with deduplication  (cost=17773..17773 rows=5627) (actual time=65.1..65.1 rows=4122 loops=1)
+                -> Filter: ((fx_bestellungen.`status` = 'storniert') and (fx_bestellungen.betrag > 100.00))  (cost=17210 rows=5627) (actual time=0.303..63.5 rows=4122 loops=1)
+                    -> Table scan on fx_bestellungen  (cost=17210 rows=168817) (actual time=0.28..37.9 rows=200000 loops=1)
+        -> Single-row covering index lookup on fx_kunden using PRIMARY (id=`<subquery2>`.kunde_id)  (cost=1407 rows=1) (actual time=0.00166..0.0017 rows=1 loops=4122)

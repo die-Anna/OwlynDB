@@ -1,0 +1,7 @@
+-> Sort: summe DESC  (actual time=278..278 rows=4 loops=1)
+    -> Table scan on <temporary>  (actual time=278..278 rows=4 loops=1)
+        -> Aggregate using temporary table  (actual time=278..278 rows=4 loops=1)
+            -> Nested loop inner join  (cost=23119 rows=16882) (actual time=0.96..222 rows=66666 loops=1)
+                -> Filter: (b.`status` = 'offen')  (cost=17210 rows=16882) (actual time=0.875..95.3 rows=66666 loops=1)
+                    -> Table scan on b  (cost=17210 rows=168817) (actual time=0.869..67.8 rows=200000 loops=1)
+                -> Single-row index lookup on k using PRIMARY (id=b.kunde_id)  (cost=0.25 rows=1) (actual time=0.00158..0.00163 rows=1 loops=66666)

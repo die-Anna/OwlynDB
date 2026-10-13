@@ -1,0 +1,5 @@
+{
+  "mysql": { "host": "127.0.0.1", "port": 15306, "user": "root", "password": "dbviewer-test" },
+  "postgres": { "host": "127.0.0.1", "port": 15432, "user": "postgres", "password": "dbviewer-test" },
+  "mssql": { "host": "127.0.0.1", "port": 15433, "user": "sa", "password": "Dbviewer-Test1", "trustServerCertificate": true }
+}

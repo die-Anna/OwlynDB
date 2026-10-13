@@ -1,0 +1,118 @@
+# Baut OwlynDB für Windows, macOS und Linux.
+#
+# Tag v* (git tag v0.1.0 && git push origin v0.1.0): alle drei Systeme, danach ein Entwurf des GitHub-Releases mit allen
+# Dateien – veröffentlicht wird er erst von Hand. Von Hand gestartet (Actions → Release → Run workflow): nur bauen, die Dateien
+# liegen dann als Artefakte am Lauf.
+#
+# macOS geht nur auf einem Mac (dmg, Signatur), deshalb je System ein eigener Runner. Der Mac-Build ist ad hoc signiert, nicht
+# notarisiert (package.json build.mac.identity "-"): macOS fragt beim ersten Öffnen nach, siehe README.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows
+            os: windows-latest
+            target: --win
+            files: |
+              release/*.exe
+          - name: macOS
+            os: macos-latest
+            target: --mac
+            files: |
+              release/*.dmg
+          - name: Linux
+            os: ubuntu-latest
+            target: --linux
+            files: |
+              release/*.AppImage
+              release/*.deb
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            ui/package-lock.json
+
+      - run: npm ci
+      - run: npm ci
+        working-directory: ui
+
+      - name: Unit-Tests
+        run: npm run test:unit
+
+      # wie npm run dist, dist:mac bzw. dist:linux – dazwischen die Lizenzhinweise neu für dieses System: optionale Pakete
+      # (cpu-features, buildcheck, nan unter ssh2) gibt es nur unter macOS und Linux, die eingecheckte Datei entsteht unter
+      # Windows. --publish never: electron-builder lädt nichts selbst hoch, das macht der Schritt release unten
+      - name: Bauen
+        # bash auch unter Windows: bricht beim ersten Fehler ab (PowerShell liefe nach einem fehlgeschlagenen npm weiter)
+        shell: bash
+        run: |
+          npm run build
+          npm run notices
+          npx electron-builder ${{ matrix.target }} --publish never
+        env:
+          # keine Suche nach Zertifikaten im Schlüsselbund des Runners (Mac: ad hoc signiert)
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      # startet die gebaute App unter Xvfb und prüft, ob die Oberfläche lädt
+      - name: Rauchtest (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq xvfb > /dev/null
+          mkdir -p /tmp/profile
+          DBV_USER_DATA=/tmp/profile xvfb-run -a release/linux-unpacked/owlyndb --no-sandbox --remote-debugging-port=9222 > /tmp/app.log 2>&1 &
+          for i in $(seq 1 60); do
+            sleep 1
+            if node dev/cdp.mjs eval "document.querySelector('.kbd')?.textContent" 2>/dev/null | grep -q 'Strg+T'; then
+              echo "Oberfläche nach ${i}s geladen"
+              exit 0
+            fi
+          done
+          cat /tmp/app.log
+          exit 1
+        env:
+          CDP_PORT: 9222
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: OwlynDB-${{ matrix.name }}
+          path: ${{ matrix.files }}
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Entwurf des Releases
+        run: |
+          ls -la dist
+          gh release create "$GITHUB_REF_NAME" dist/* --draft --repo "$GITHUB_REPOSITORY" \
+            --title "OwlynDB ${GITHUB_REF_NAME#v}" \
+            --notes "Windows: OwlynDB-Setup-…exe (Installer) oder die portable .exe · macOS: .dmg für Apple Silicon (arm64) bzw. Intel (x64), nicht notarisiert – Hinweise im README · Linux: AppImage oder .deb"
+        env:
+          GH_TOKEN: ${{ github.token }}

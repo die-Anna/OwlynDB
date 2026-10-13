@@ -1,0 +1,79 @@
+<div class="shell" [style.grid-template-columns]="sidebarWidth() + 'px 4px 1fr'">
+  <aside>
+    <app-tree />
+  </aside>
+  <div class="resizer" (mousedown)="startResize($event)"></div>
+
+  <main>
+    <nav class="tabs" role="tablist" aria-label="Offene Tabs">
+      @for (t of state.tabs(); track t.id) {
+        <div
+          class="tab"
+          role="tab"
+          [id]="'tab-' + t.id"
+          [attr.aria-controls]="'pane-' + t.id"
+          [attr.tabindex]="t.id === state.activeId() ? 0 : -1"
+          (keydown)="onTabKey($event, t)"
+          [class.on]="t.id === state.activeId()"
+          [attr.aria-selected]="t.id === state.activeId()"
+          [title]="tabTooltip(t)"
+          [style.--conn]="tabColor(t)"
+          (click)="state.activeId.set(t.id)"
+          (mousedown)="onTabMouseDown($event, t)"
+          (contextmenu)="tabMenu($event, t)"
+        >
+          <span class="ic" [class.q]="t.kind === 'query'"><app-icon [name]="t.kind === 'table' ? (t.ref.kind === 'view' ? 'view' : 'table') : t.kind === 'compare' ? 'compare' : t.kind === 'sessions' ? 'activity' : t.kind === 'er' ? 'diagram' : t.kind === 'datacompare' ? 'datacompare' : 'query'" [size]="13" /></span>
+          <span class="label">{{ tabTitle(t) }}</span>
+          <!-- Tastatur: Entf auf dem Tab (der Knopf steht nicht in der Tab-Reihenfolge) -->
+          <button type="button" class="x" tabindex="-1" [title]="'Schließen (Strg+W, Entf)' | keys" aria-label="Tab schließen" (click)="$event.stopPropagation(); state.requestClose([t.id])"><app-icon name="close" [size]="12" /></button>
+        </div>
+      }
+      <button type="button" class="btn icon add" [title]="'Neue Abfrage (Strg+T)' | keys" (click)="newQuery()"><app-icon name="plus" /></button>
+    </nav>
+
+    <section class="content">
+      @for (t of state.tabs(); track t.id) {
+        <div class="pane" role="tabpanel" [id]="'pane-' + t.id" [attr.aria-labelledby]="'tab-' + t.id" [hidden]="t.id !== state.activeId()">
+          @if (t.kind === 'table') {
+            <app-table-view [tab]="t" [active]="t.id === state.activeId()" />
+          } @else if (t.kind === 'compare') {
+            <app-schema-compare [tab]="t" />
+          } @else if (t.kind === 'sessions') {
+            <app-sessions-view [tab]="t" [active]="t.id === state.activeId()" />
+          } @else if (t.kind === 'er') {
+            <app-er-view [tab]="t" [active]="t.id === state.activeId()" />
+          } @else if (t.kind === 'datacompare') {
+            <app-data-compare [tab]="t" />
+          } @else {
+            <app-query-view [tab]="t" [active]="t.id === state.activeId()" />
+          }
+        </div>
+      } @empty {
+        <div class="welcome">
+          @if (loadError()) {
+            <div class="error-box">{{ loadError() }}</div>
+          }
+          <div class="brand">
+            <img src="logo.png" alt="" width="88" height="88" />
+            <div>
+              <h1>OwlynDB</h1>
+              <div class="tagline">One Tool to Bind Them.</div>
+            </div>
+          </div>
+          <p>Tabelle im Baum links anklicken, um die Daten zu sehen – oder eine Abfrage öffnen.</p>
+          <div class="actions">
+            <button type="button" class="btn primary" (click)="newQuery()"><app-icon name="query" /> Neue Abfrage <span class="kbd">{{ 'Strg+T' | keys }}</span></button>
+            <button type="button" class="btn" (click)="state.editing.set('')"><app-icon name="plus" /> Verbindung anlegen</button>
+          </div>
+        </div>
+      }
+    </section>
+  </main>
+</div>
+
+<app-connection-dialog />
+<app-export-dialog />
+<app-dump-dialog />
+<app-settings-dialog />
+<app-object-search />
+<app-context-menu />

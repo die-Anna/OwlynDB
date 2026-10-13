@@ -1,0 +1,8 @@
+-> Aggregate: count(0)  (cost=773e+6 rows=1) (actual time=93.8..93.8 rows=1 loops=1)
+    -> Nested loop antijoin  (cost=386e+6 rows=3.86e+9) (actual time=77.2..92.8 rows=15878 loops=1)
+        -> Covering index scan on fx_kunden using ix_fx_ort  (cost=2313 rows=22886) (actual time=0.174..4.19 rows=20000 loops=1)
+        -> Single-row index lookup on <subquery2> using <auto_distinct_key> (kunde_id=fx_kunden.id)  (cost=34092..34092 rows=1) (actual time=0.00426..0.00426 rows=0.206 loops=20000)
+            -> Materialize with deduplication  (cost=34092..34092 rows=168817) (actual time=77..77 rows=4122 loops=1)
+                -> Filter: (fx_bestellungen.kunde_id is not null)  (cost=17210 rows=168817) (actual time=0.265..74.7 rows=4122 loops=1)
+                    -> Filter: ((fx_bestellungen.`status` = 'storniert') and (fx_bestellungen.betrag > 100))  (cost=17210 rows=168817) (actual time=0.264..74.3 rows=4122 loops=1)
+                        -> Table scan on fx_bestellungen  (cost=17210 rows=168817) (actual time=0.241..44.1 rows=200000 loops=1)

@@ -1,0 +1,90 @@
+@if (svc.source(); as s) {
+  <div class="backdrop" (mousedown)="onBackdrop($event)">
+    <form class="dialog" appModal (dismiss)="close()" (ngSubmit)="run()">
+      <header>
+        <h2>Exportieren <span class="dim">{{ s.baseName }}</span></h2>
+        <button type="button" class="btn icon" (click)="close()" title="Schließen"><app-icon name="close" /></button>
+      </header>
+
+      <div class="formats">
+        @for (f of formats(); track f[0]) {
+          <button type="button" class="fmt" [class.on]="format() === f[0]" (click)="set('format', f[0])">{{ f[1] }}</button>
+        }
+      </div>
+
+      <div class="grid">
+        <label>Umfang</label>
+        <div class="radios">
+          @for (sc of scopes(); track sc.id) {
+            <label class="radio">
+              <input type="radio" name="scope" [value]="sc.id" [checked]="scope() === sc.id" (change)="scope.set(sc.id)" />
+              {{ sc.label }}
+              @if (sc.hint) {
+                <span class="dim">· {{ sc.hint }}</span>
+              }
+            </label>
+          }
+          @for (w of warnings(); track $index) {
+            <div class="warn">{{ w }}</div>
+          }
+          @if (scope() === 'rerun') {
+            <div class="dim note">Nur lesende Anweisungen; bei großen Ergebnissen dauert es – solange lässt sich der Export abbrechen.</div>
+          } @else if (s.kind === 'table' && scope() === 'all') {
+            <div class="dim note">Bei großen Tabellen dauert es – solange lässt sich der Export abbrechen.</div>
+          }
+        </div>
+
+        @switch (format()) {
+          @case ('csv') {
+            <label>Trennzeichen</label>
+            <div class="radios row">
+              @for (d of delimiters; track d[0]) {
+                <label class="radio"><input type="radio" name="delim" [checked]="o().delimiter === d[0]" (change)="set('delimiter', d[0])" /> {{ d[1] }}</label>
+              }
+            </div>
+            <label>Optionen</label>
+            <div class="radios row">
+              <label class="radio"><input type="checkbox" name="header" [ngModel]="o().header" (ngModelChange)="set('header', $event)" /> Spaltennamen</label>
+              <label class="radio" title="Byte Order Mark: Excel erkennt sonst Umlaute nicht"><input type="checkbox" name="bom" [ngModel]="o().bom" (ngModelChange)="set('bom', $event)" /> UTF-8 mit BOM (für Excel)</label>
+            </div>
+          }
+          @case ('sql') {
+            <label for="ex-table">Tabelle</label>
+            <input id="ex-table" type="text" name="sqlTable" class="mono" [ngModel]="sqlTable()" (ngModelChange)="sqlTable.set($event)" />
+            <label for="ex-rpi">Zeilen/INSERT</label>
+            <input id="ex-rpi" type="number" name="rpi" class="small" min="1" max="1000" [ngModel]="o().rowsPerInsert" (ngModelChange)="set('rowsPerInsert', +$event)" />
+          }
+          @case ('xlsx') {
+            <span></span>
+            <div class="dim note">Zahlen und Datumswerte werden als echte Excel-Werte geschrieben, Kopfzeile fixiert und mit Filter.</div>
+          }
+          @case ('json') {
+            <span></span>
+            <div class="dim note">Liste von Objekten, Spaltenname → Wert; NULL bleibt null.</div>
+          }
+        }
+      </div>
+
+      @if (error()) {
+        <div class="result bad">{{ error() }}</div>
+      }
+      @if (done(); as d) {
+        <div class="result ok">
+          {{ n(d.rows) }} Zeilen gespeichert · {{ n(d.durationMs) }} ms<br />
+          <span class="mono path">{{ d.file }}</span>
+          <button type="button" class="btn" (click)="show(d.file)">Im Ordner zeigen</button>
+          @for (note of d.notes ?? []; track $index) {
+            <div class="warn">{{ note }}</div>
+          }
+        </div>
+      }
+      <div class="dim note">Eine vorhandene Datei wird erst ersetzt, wenn der Export fertig ist – bei Fehler oder Abbruch bleibt sie, wie sie war.</div>
+
+      <footer>
+        <span class="grow"></span>
+        <button type="button" class="btn" (click)="abort()" [disabled]="busy() && !cancellable()">{{ done() ? 'Schließen' : 'Abbrechen' }}</button>
+        <button type="submit" class="btn primary" [disabled]="busy()">{{ busy() ? 'exportiert …' : 'Speichern unter …' }}</button>
+      </footer>
+    </form>
+  </div>
+}

@@ -1,0 +1,3 @@
+# Dateien für Bash und Linux-Container immer mit LF auschecken
+*.sh text eol=lf
+dev/tls/** text eol=lf

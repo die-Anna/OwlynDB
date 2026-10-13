@@ -1,0 +1,257 @@
+<div class="subtabs">
+  <button type="button" [class.on]="sub() === 'data'" (click)="sub.set('data')">Daten</button>
+  <button type="button" [class.on]="sub() === 'structure'" (click)="sub.set('structure')">Struktur</button>
+  <button type="button" [class.on]="sub() === 'ddl'" (click)="sub.set('ddl')">{{ es() ? 'Mapping' : 'DDL' }}</button>
+  <span class="path">{{ tab().ref.database }} · {{ title() }}</span>
+  <span class="grow"></span>
+  <button type="button" class="btn icon" title="Neu laden (F5)" (click)="refreshAll()"><app-icon name="refresh" /></button>
+</div>
+
+@switch (sub()) {
+  @case ('data') {
+    <div class="toolbar">
+      <div class="search" [class.on]="!!search()">
+        <app-icon name="search" [size]="13" />
+        <input
+          type="text"
+          placeholder="In allen Spalten suchen (Enter)"
+          [readOnly]="locked()"
+          [value]="searchDraft()"
+          (input)="onSearchInput($any($event.target).value)"
+          (keydown.enter)="applySearch()"
+          (keydown.escape)="onSearchInput(''); applySearch()"
+        />
+        @if (searchDraft() !== search()) {
+          <span class="pending" title="Mit Enter suchen">↵</span>
+        }
+      </div>
+      <div class="where" [class.on]="!!where()" [class.dirty]="whereDraft() !== where()">
+        <span class="kw">WHERE</span>
+        <input
+          type="text"
+          class="mono"
+          [placeholder]="wherePlaceholder()"
+          [title]="es() ? 'Bedingung in SQL von Elasticsearch, z. B. MATCH(feld, \'text\') für Volltext' : ''"
+          [readOnly]="locked()"
+          [value]="whereDraft()"
+          (input)="whereDraft.set($any($event.target).value)"
+          (keydown.enter)="applyWhere()"
+          (keydown.escape)="whereDraft.set(where())"
+        />
+      </div>
+      @if (filtered()) {
+        <button type="button" class="btn" (click)="clearFilters()" title="Suche und WHERE zurücksetzen"><app-icon name="close" /> Filter</button>
+      }
+      <span class="grow"></span>
+      @if (editMode()) {
+        <button type="button" class="btn" title="Neue Zeile oben einfügen" (click)="addRow()"><app-icon name="plus" /> Zeile</button>
+        <button type="button" class="btn icon" title="Markierte Zeilen zum Löschen vormerken" (click)="deleteSelected()"><app-icon name="trash" /></button>
+        <button type="button" class="btn primary" [disabled]="!pending() || saving()" title="Anweisungen ansehen und ausführen" (click)="showPreview()">
+          Speichern{{ pending() ? ' (' + pending() + ')' : '' }}
+        </button>
+        <button type="button" class="btn" [disabled]="!pending()" (click)="discardEdits()">Verwerfen</button>
+        <span class="sep"></span>
+      }
+      @if (!es()) {
+        <button
+          type="button"
+          class="btn"
+          [class.on]="editMode()"
+          [disabled]="!!editBlock() && !editMode()"
+          [title]="editBlock() ?? (editMode() ? 'Bearbeiten beenden' : ('Daten bearbeiten: Doppelklick oder Enter auf eine Zelle, Strg+0 = NULL, Rechtsklick für Zeilen' | keys))"
+          (click)="toggleEdit()"
+        >
+          <app-icon name="edit" /> Bearbeiten
+        </button>
+        <span class="sep"></span>
+      }
+      <span class="dim">{{ loading() ? 'lädt …' : durationMs() + ' ms' }}</span>
+      <span class="sep"></span>
+      <button type="button" class="btn icon" title="Erste Seite" [disabled]="offset() === 0 || locked()" (click)="page('first')"><app-icon name="first" /></button>
+      <button type="button" class="btn icon" title="Vorherige Seite" [disabled]="offset() === 0 || locked()" (click)="page('prev')"><app-icon name="prev" /></button>
+      <span class="pages">{{ pageText() }}</span>
+      <button type="button" class="btn icon" title="Nächste Seite" [disabled]="!canNext() || locked()" (click)="page('next')"><app-icon name="next" /></button>
+      <button type="button" class="btn icon" title="Letzte Seite" [disabled]="!canNext() || total() === null || locked()" (click)="page('last')"><app-icon name="last" /></button>
+      <select [value]="limit()" [disabled]="locked()" (change)="setLimit($any($event.target).value)" title="Zeilen pro Seite">
+        @for (p of pageSizes; track p) {
+          <option [value]="p" [selected]="p === limit()">{{ p }}</option>
+        }
+      </select>
+      <span class="sep"></span>
+      <button type="button" class="btn" title="Diese Abfrage in einem Abfrage-Tab öffnen" (click)="openAsQuery()"><app-icon name="query" /> Als Abfrage</button>
+      <button type="button" class="btn" title="Als Excel, CSV, JSON oder SQL speichern" (click)="exportData()"><app-icon name="download" /> Export</button>
+    </div>
+    @if (error()) {
+      <div class="error-box">{{ error() }}</div>
+    }
+    @if (editError()) {
+      <div class="error-box">{{ editError() }}</div>
+    }
+    <app-result-grid
+      class="fill"
+      [columns]="columns()"
+      [rows]="rows()"
+      [rowOffset]="offset()"
+      [serverSort]="sort()"
+      [filterable]="!locked()"
+      [sortable]="!locked()"
+      [editing]="gridEditing()"
+      (cellEdit)="onCellEdit($event)"
+      (editAction)="onEditAction($event)"
+      [links]="links()"
+      (follow)="onFollow($event)"
+      (sortChange)="onSort($event)"
+      (filterRequest)="onFilter($event)"
+      (exportRequest)="exportData()"
+    />
+    @if (preview(); as p) {
+      <div class="backdrop" (mousedown)="onPreviewBackdrop($event)">
+        <div class="dialog" appModal (dismiss)="closePreview()">
+          <header>
+            <h2>Änderungen speichern <span class="dim">{{ p.length }} Anweisung{{ p.length === 1 ? '' : 'en' }} in einer Transaktion</span></h2>
+          </header>
+          <pre class="stmts">{{ previewText() }}</pre>
+          <div class="note dim">Jede Anweisung muss genau eine Zeile treffen – wurde eine Zeile inzwischen geändert oder gelöscht, wird alles zurückgerollt.</div>
+          <footer>
+            <span class="grow"></span>
+            <button type="button" class="btn" [disabled]="saving()" (click)="closePreview()">Abbrechen</button>
+            <button type="button" class="btn primary" [disabled]="saving()" (click)="save()">{{ saving() ? 'speichert …' : 'Ausführen' }}</button>
+          </footer>
+        </div>
+      </div>
+    }
+  }
+
+  @case ('structure') {
+    <div class="scroll">
+      @if (infoError()) {
+        <div class="error-box">{{ infoError() }}</div>
+      }
+      @if (info(); as t) {
+        @if (es()) {
+          <!-- Elasticsearch: Felder aus dem Mapping (Objekte aufgelöst); Indizes und Fremdschlüssel gibt es nicht -->
+          <h3>Felder <span class="dim">{{ t.columns.length - 1 }}</span></h3>
+          <table class="meta">
+            <thead>
+              <tr><th></th><th>Feld</th><th>Typ</th><th>Details</th></tr>
+            </thead>
+            <tbody>
+              @for (c of t.columns; track c.name) {
+                <tr>
+                  <td class="ico">@if (c.primaryKey) {<app-icon name="key" [size]="13" />}</td>
+                  <td class="name">{{ c.name }}</td>
+                  <td class="mono">{{ c.dataType }}</td>
+                  <td class="dim">{{ c.comment }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        } @else {
+          <h3>Spalten <span class="dim">{{ t.columns.length }}</span></h3>
+          <table class="meta">
+            <thead>
+              <tr><th></th><th>Name</th><th>Typ</th><th>NULL</th><th>Standard</th><th>Extra</th><th>Kommentar</th></tr>
+            </thead>
+            <tbody>
+              @for (c of t.columns; track c.name) {
+                <tr>
+                  <td class="ico">@if (c.primaryKey) {<app-icon name="key" [size]="13" />}</td>
+                  <td class="name">{{ c.name }}</td>
+                  <td class="mono">{{ c.dataType }}</td>
+                  <td>{{ c.nullable ? 'ja' : '' }}</td>
+                  <td class="mono">{{ c.defaultValue }}</td>
+                  <td>{{ c.autoIncrement ? 'auto' : '' }}</td>
+                  <td class="dim">{{ c.comment }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+
+          <h3>Indizes <span class="dim">{{ t.indexes.length }}</span></h3>
+          @if (t.indexes.length) {
+            <table class="meta">
+              <thead>
+                <tr><th>Name</th><th>Spalten</th><th>Art</th></tr>
+              </thead>
+              <tbody>
+                @for (i of t.indexes; track i.name) {
+                  <tr>
+                    <td class="name">{{ i.name }}</td>
+                    <td class="mono">{{ i.columns.join(', ') }}</td>
+                    <td>{{ i.primary ? 'Primärschlüssel' : i.unique ? 'eindeutig' : '' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          } @else {
+            <p class="dim">keine</p>
+          }
+
+          <h3>Fremdschlüssel <span class="dim">{{ t.foreignKeys.length }}</span></h3>
+          @if (t.foreignKeys.length) {
+            <table class="meta">
+              <thead>
+                <tr><th>Name</th><th>Spalten</th><th>verweist auf</th></tr>
+              </thead>
+              <tbody>
+                @for (f of t.foreignKeys; track f.name) {
+                  <tr>
+                    <td class="name">{{ f.name }}</td>
+                    <td class="mono">{{ f.columns.join(', ') }}</td>
+                    <td>
+                      <a href="" (click)="$event.preventDefault(); openRef(f.refSchema, f.refTable)">{{ dialect() === 'mysql' ? f.refTable : f.refSchema + '.' + f.refTable }}</a>
+                      <span class="mono dim"> ({{ f.refColumns.join(', ') }})</span>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          } @else {
+            <p class="dim">keine</p>
+          }
+
+          <h3>Referenziert von <span class="dim">{{ t.referencedBy.length }}</span></h3>
+          @if (t.referencedBy.length) {
+            <table class="meta">
+              <thead>
+                <tr><th>Tabelle</th><th>Spalten</th><th>auf</th><th>Name</th></tr>
+              </thead>
+              <tbody>
+                @for (r of t.referencedBy; track r.schema + '.' + r.table + '.' + r.name) {
+                  <tr>
+                    <td>
+                      <a href="" (click)="$event.preventDefault(); openRef(r.schema, r.table)">{{ dialect() === 'mysql' && r.schema === tab().ref.database ? r.table : r.schema + '.' + r.table }}</a>
+                    </td>
+                    <td class="mono">{{ r.columns.join(', ') }}</td>
+                    <td class="mono dim">{{ r.refColumns.join(', ') }}</td>
+                    <td class="dim">{{ r.name }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          } @else {
+            <p class="dim">keine</p>
+          }
+        }
+      } @else if (!infoError()) {
+        <p class="dim pad">lädt …</p>
+      }
+    </div>
+  }
+
+  @case ('ddl') {
+    <div class="toolbar">
+      <button type="button" class="btn" [disabled]="!ddl()" (click)="copy(ddl() ?? '')"><app-icon name="copy" /> Kopieren</button>
+      <button type="button" class="btn" [disabled]="!ddl()" [title]="es() ? 'GET ' + tab().ref.name + ' im Abfrage-Tab' : ''" (click)="openDdlAsQuery()"><app-icon name="query" /> In Abfrage öffnen</button>
+      @if (es()) {
+        <span class="dim">Mapping, Einstellungen und Aliase, wie Elasticsearch sie liefert</span>
+      } @else if (dialect() !== 'mysql') {
+        <span class="dim">aus dem Systemkatalog zusammengesetzt</span>
+      }
+    </div>
+    @if (ddlError()) {
+      <div class="error-box">{{ ddlError() }}</div>
+    }
+    <app-sql-editor class="fill" [value]="ddl() ?? ''" [readOnly]="true" [language]="es() ? 'json' : 'sql'" />
+  }
+}

@@ -1,0 +1,78 @@
+<div class="head">
+  <span class="title">Verbindungen</span>
+  <button type="button" class="btn icon" [title]="'Objekte suchen (Strg+Umschalt+F)' | keys" [disabled]="!state.connections().length" (click)="openSearch()"><app-icon name="search" /></button>
+  <button type="button" class="btn icon" title="Neue Verbindung" (click)="state.editing.set('')"><app-icon name="plus" /></button>
+  <button type="button" class="btn icon" title="Einstellungen exportieren oder importieren" (click)="settingsMenu($event)"><app-icon name="more" /></button>
+</div>
+<div class="filter">
+  <app-icon name="search" [size]="13" />
+  <input type="text" placeholder="Tabellen und Routinen filtern" [value]="filter()" (input)="filter.set($any($event.target).value)" (keydown.escape)="filter.set('')" />
+</div>
+
+<div class="tree" role="tree" aria-label="Verbindungen">
+  @for (n of rootNodes(); track n.key) {
+    <ng-container *ngTemplateOutlet="node; context: { $implicit: n, depth: 0 }" />
+  } @empty {
+    <div class="empty">
+      Noch keine Verbindung.<br />
+      <button type="button" class="btn primary" (click)="state.editing.set('')"><app-icon name="plus" /> Verbindung anlegen</button>
+      <button type="button" class="btn" title="Verbindungen und Abfragen von einem anderen PC übernehmen" (click)="settings.open('import')">
+        <app-icon name="upload" /> Einstellungen importieren …
+      </button>
+    </div>
+  }
+</div>
+
+<ng-template #node let-n let-depth="depth">
+  <div
+    class="row"
+    role="treeitem"
+    [attr.aria-level]="depth + 1"
+    [attr.aria-selected]="selectedKey() === n.key"
+    [attr.tabindex]="tabStop(n) ? 0 : -1"
+    (keydown)="onKey($event, n)"
+    (focus)="selectedKey.set(n.key)"
+    [class.selected]="selectedKey() === n.key"
+    [class.system]="n.system"
+    [style.padding-left.px]="6 + depth * 14"
+    [attr.aria-expanded]="n.kind === 'object' || n.kind === 'routine' ? null : n.expanded()"
+    (click)="click(n)"
+    (contextmenu)="contextMenu($event, n)"
+    [title]="n.kind === 'object' ? n.label : n.kind === 'routine' ? routineTitle(n) : ''"
+  >
+    @if (n.kind !== 'object' && n.kind !== 'routine') {
+      <span class="twisty" [class.open]="n.expanded()" (click)="toggle(n, $event)"><app-icon name="chevron" [size]="12" /></span>
+    } @else {
+      <span class="twisty"></span>
+    }
+    @if (n.kind === 'connection') {
+      <span class="dot" [style.background]="conn(n.connectionId)?.color || 'transparent'"></span>
+    }
+    <span class="ic" [class]="'k-' + n.kind + (n.object ? ' o-' + n.object.kind : '') + (n.routine ? ' r-' + n.routine.kind : '')"><app-icon [name]="nodeIcon(n)" [size]="14" /></span>
+    <span class="label">{{ n.kind === 'connection' ? conn(n.connectionId)?.name : n.label }}</span>
+    @if (n.kind === 'connection' && conn(n.connectionId)?.options?.readOnly) {
+      <span class="ro" title="Nur lesen"><app-icon name="lock" [size]="12" /></span>
+    }
+    @if (n.loading()) {
+      <span class="spin"></span>
+    } @else if (n.kind === 'connection' && statusOf(n) === 'connected') {
+      <span class="live" title="verbunden"></span>
+    } @else if (n.kind === 'connection' && lostOf(n)) {
+      <span class="lost" title="Verbindung unterbrochen – Klick oder Rechtsklick › Verbinden"></span>
+    } @else if (n.object) {
+      <span class="meta">{{ rows(n.object) }}</span>
+    }
+  </div>
+  @if (n.error()) {
+    <div class="err" [style.padding-left.px]="26 + depth * 14" [title]="n.error()">{{ n.error() }}</div>
+  }
+  @if (n.expanded() && n.children(); as kids) {
+    @for (c of visibleChildren(n); track c.key) {
+      <ng-container *ngTemplateOutlet="node; context: { $implicit: c, depth: depth + 1 }" />
+    } @empty {
+      @if (!n.loading()) {
+        <div class="none" [style.padding-left.px]="26 + depth * 14">{{ filter() ? 'kein Treffer' : 'leer' }}</div>
+      }
+    }
+  }
+</ng-template>

@@ -1,0 +1,189 @@
+@if (svc.mode(); as mode) {
+  <div class="backdrop" (mousedown)="onBackdrop($event)">
+    <form class="dialog wide" appModal (dismiss)="close()" (ngSubmit)="mode === 'export' ? doExport() : doImport()">
+      <header>
+        <h2>{{ mode === 'export' ? 'Einstellungen exportieren' : 'Einstellungen importieren' }}</h2>
+        <button type="button" class="btn icon" title="Schließen" [disabled]="busy()" (click)="close()"><app-icon name="close" /></button>
+      </header>
+
+      @if (mode === 'export') {
+        @if (savedFile(); as f) {
+          <div class="result ok">
+            Gespeichert.
+            <div><span class="path mono">{{ f }}</span><button type="button" class="btn" (click)="showFile(f)">Im Ordner zeigen</button></div>
+          </div>
+        } @else {
+          <div class="grid">
+            <label>Verbindungen</label>
+            <div class="conns">
+              <div class="bulk">
+                <button type="button" class="link" (click)="setAll(true)">alle</button>
+                <button type="button" class="link" (click)="setAll(false)">keine</button>
+                <span class="dim">{{ chosen().size }} von {{ state.connections().length }} gewählt</span>
+              </div>
+              <div class="list">
+                @for (c of state.connections(); track c.id) {
+                  <label class="item">
+                    <input type="checkbox" [name]="'c-' + c.id" [ngModel]="chosen().has(c.id)" (ngModelChange)="toggle(c.id, $event)" />
+                    <span class="dot" [style.background]="c.color || 'transparent'"></span>
+                    <span class="name">{{ c.name }}</span>
+                    <span class="dim meta">{{ dialectLabel[c.dialect] }} · {{ c.host }}:{{ c.port }} · {{ c.user }}</span>
+                    @if (c.hasPassword || c.hasKeyPassphrase || c.hasSshSecret) {
+                      <span class="key" title="Passwort gespeichert"><app-icon name="key" [size]="12" /></span>
+                    }
+                  </label>
+                }
+              </div>
+            </div>
+
+            <label>Mitnehmen</label>
+            <div class="radios">
+              <label class="radio">
+                <input type="checkbox" name="q" [ngModel]="withQueries()" (ngModelChange)="withQueries.set($event)" />
+                gespeicherte Abfragen ({{ queryCount() ?? '…' }})
+              </label>
+              <label class="radio">
+                <input type="checkbox" name="h" [ngModel]="withHistory()" (ngModelChange)="withHistory.set($event)" />
+                Abfrage-Verlauf der gewählten Verbindungen ({{ fmtNum(historyCount()) }} Einträge)
+                <span class="dim">– enthält SQL samt Werten</span>
+              </label>
+            </div>
+
+            <label>Passwörter</label>
+            <div class="radios">
+              <label class="radio">
+                <input type="radio" name="pw" [checked]="!withPasswords()" (change)="withPasswords.set(false)" /> nicht mitnehmen – beim Import neu eingeben
+              </label>
+              <label class="radio">
+                <input type="radio" name="pw" [checked]="withPasswords()" (change)="withPasswords.set(true)" /> mit einem Export-Passwort verschlüsselt mitnehmen
+              </label>
+              @if (withPasswords()) {
+                <div class="pw">
+                  <input
+                    type="password"
+                    name="p1"
+                    autocomplete="new-password"
+                    [placeholder]="'Export-Passwort (mind. ' + minPassword + ' Zeichen)'"
+                    [ngModel]="password()"
+                    (ngModelChange)="password.set($event)"
+                  />
+                  <input type="password" name="p2" autocomplete="new-password" placeholder="wiederholen" [ngModel]="password2()" (ngModelChange)="password2.set($event)" />
+                </div>
+                @if (password() && passwordProblem(); as w) {
+                  <div class="warn">{{ w }}</div>
+                }
+              }
+              <div class="dim note">
+                Gespeicherte Passwörter sind über {{ secretStore }} an Benutzer und PC gebunden – ohne Export-Passwort gehen sie nicht mit.
+                Zertifikats- und Schlüsseldateien werden nur als Pfad übernommen.
+              </div>
+            </div>
+          </div>
+        }
+      } @else {
+        <div class="grid">
+          <label for="settings-file">Datei</label>
+          <div class="file">
+            <input id="settings-file" type="text" name="file" class="mono" readonly placeholder="owlyndb-einstellungen-….json" [value]="file()" />
+            <button type="button" class="btn" [disabled]="busy()" (click)="pick()">Datei …</button>
+          </div>
+
+          @if (preview(); as p) {
+            @if (p.hasSecrets) {
+              <label>Passwörter</label>
+              <div class="radios">
+                @if (p.secretsOpen) {
+                  <div class="okline"><app-icon name="key" [size]="13" /> entschlüsselt – die Passwörter werden mit übernommen</div>
+                } @else {
+                  <div class="pw">
+                    <input type="password" name="ip" placeholder="Export-Passwort" [ngModel]="importPassword()" (ngModelChange)="importPassword.set($event)" (keydown.enter)="$event.preventDefault(); unlock()" />
+                    <button type="button" class="btn" [disabled]="!importPassword() || busy()" (click)="unlock()">Entschlüsseln</button>
+                  </div>
+                  <div class="dim note">Die Datei enthält verschlüsselte Passwörter. Ohne Export-Passwort werden die Verbindungen ohne Passwörter übernommen.</div>
+                }
+              </div>
+            }
+
+            <label>Verbindungen</label>
+            <div class="list imp">
+              @for (c of p.connections; track c.index) {
+                <div class="row" [class.skip]="(actions()[c.index] ?? 'skip') === 'skip'">
+                  <span class="dot" [style.background]="c.color || 'transparent'"></span>
+                  <div class="what">
+                    <div class="title">
+                      <b>{{ c.name }}</b>
+                      <span class="dim">{{ dialectLabel[c.dialect] }} · {{ c.host }}:{{ c.port }} · {{ c.user }}</span>
+                      @if (c.hasSecret) {
+                        <span class="key" title="Passwort in der Datei"><app-icon name="key" [size]="12" /></span>
+                      }
+                    </div>
+                    <div class="status" [class.new]="!c.match" [class.diff]="!!c.match?.differences?.length">{{ statusText(c) }}</div>
+                    @for (f of c.missingFiles; track f) {
+                      <div class="warn small">Datei fehlt auf diesem PC: <span class="mono">{{ f }}</span></div>
+                    }
+                  </div>
+                  <select [name]="'a-' + c.index" [ngModel]="actions()[c.index]" (ngModelChange)="setAction(c.index, $event)">
+                    @if (c.match) {
+                      <option value="skip">überspringen</option>
+                      <option value="replace">„{{ c.match.name }}“ ersetzen</option>
+                      <option value="new">zusätzlich anlegen</option>
+                    } @else {
+                      <option value="new">anlegen</option>
+                      <option value="skip">überspringen</option>
+                    }
+                  </select>
+                </div>
+              } @empty {
+                <div class="dim">Keine Verbindungen in der Datei.</div>
+              }
+            </div>
+
+            <label>Mitnehmen</label>
+            <div class="radios">
+              <label class="radio" [class.off]="!p.savedQueries.fresh">
+                <input type="checkbox" name="iq" [disabled]="!p.savedQueries.fresh" [ngModel]="importQueries() && !!p.savedQueries.fresh" (ngModelChange)="importQueries.set($event)" />
+                {{ p.savedQueries.fresh }} neue gespeicherte Abfrage{{ p.savedQueries.fresh === 1 ? '' : 'n' }}
+                <span class="dim">({{ p.savedQueries.total }} in der Datei)</span>
+              </label>
+              <label class="radio" [class.off]="!p.history.fresh">
+                <input type="checkbox" name="ih" [disabled]="!p.history.fresh" [ngModel]="importHistory() && !!p.history.fresh" (ngModelChange)="importHistory.set($event)" />
+                {{ fmtNum(p.history.fresh) }} neue Verlaufseinträge
+                <span class="dim">({{ fmtNum(p.history.total) }} in der Datei)</span>
+              </label>
+              <div class="dim note">Vorhandenes wird nur überschrieben, wo du „ersetzen“ wählst. Gleiche Abfragen und Verlaufseinträge kommen nicht doppelt.</div>
+            </div>
+          } @else if (!busy()) {
+            <span></span>
+            <div class="dim note">Datei wählen, die OwlynDB beim Exportieren gespeichert hat. Vor dem Import siehst du, was neu ist und was es schon gibt.</div>
+          }
+        </div>
+        @if (result(); as r) {
+          <div class="result ok">
+            {{ resultText(r) }}
+            @for (n of r.notes; track $index) {
+              <div class="note-line">{{ n }}</div>
+            }
+          </div>
+        }
+      }
+
+      @if (error()) {
+        <div class="result bad">{{ error() }}</div>
+      }
+
+      <footer>
+        <span class="grow"></span>
+        @if ((mode === 'export' && savedFile()) || (mode === 'import' && result())) {
+          <button type="button" class="btn primary" (click)="close()">Schließen</button>
+        } @else {
+          <button type="button" class="btn" [disabled]="busy()" (click)="close()">Abbrechen</button>
+          @if (mode === 'export') {
+            <button type="submit" class="btn primary" [disabled]="busy() || !chosen().size || !!passwordProblem()"><app-icon name="download" /> Exportieren …</button>
+          } @else {
+            <button type="submit" class="btn primary" [disabled]="busy() || !importCount()"><app-icon name="upload" /> Importieren</button>
+          }
+        }
+      </footer>
+    </form>
+  </div>
+}

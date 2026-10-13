@@ -1,0 +1,72 @@
+[
+  {
+    "Plan": {
+      "Node Type": "Aggregate",
+      "Strategy": "Plain",
+      "Partial Mode": "Simple",
+      "Parallel Aware": false,
+      "Async Capable": false,
+      "Startup Cost": 864.72,
+      "Total Cost": 864.73,
+      "Plan Rows": 1,
+      "Plan Width": 16,
+      "Plans": [
+        {
+          "Node Type": "Nested Loop",
+          "Parent Relationship": "Outer",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Join Type": "Left",
+          "Startup Cost": 0.14,
+          "Total Cost": 764.72,
+          "Plan Rows": 20000,
+          "Plan Width": 3,
+          "Inner Unique": true,
+          "Plans": [
+            {
+              "Node Type": "Seq Scan",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Relation Name": "fx_kunden",
+              "Alias": "k",
+              "Startup Cost": 0,
+              "Total Cost": 309,
+              "Plan Rows": 20000,
+              "Plan Width": 6
+            },
+            {
+              "Node Type": "Memoize",
+              "Parent Relationship": "Inner",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 0.14,
+              "Total Cost": 0.16,
+              "Plan Rows": 1,
+              "Plan Width": 9,
+              "Cache Key": "k.ort",
+              "Cache Mode": "logical",
+              "Plans": [
+                {
+                  "Node Type": "Index Scan",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Scan Direction": "Forward",
+                  "Index Name": "fx_orte_pkey",
+                  "Relation Name": "fx_orte",
+                  "Alias": "o",
+                  "Startup Cost": 0.13,
+                  "Total Cost": 0.15,
+                  "Plan Rows": 1,
+                  "Plan Width": 9,
+                  "Index Cond": "((name)::text = (k.ort)::text)"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+]

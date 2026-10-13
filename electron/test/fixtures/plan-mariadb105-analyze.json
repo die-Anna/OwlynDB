@@ -1,0 +1,85 @@
+{
+  "query_block": {
+    "select_id": 1,
+    "r_loops": 1,
+    "r_total_time_ms": 3.367415702,
+    "table": {
+      "table_name": "k",
+      "access_type": "ALL",
+      "possible_keys": ["PRIMARY", "ix_kunden_ort"],
+      "r_loops": 1,
+      "rows": 2500,
+      "r_rows": 2500,
+      "r_table_time_ms": 0.381532145,
+      "r_other_time_ms": 0.14982637,
+      "filtered": 20,
+      "r_filtered": 20,
+      "attached_condition": "k.ort = 'Bern'"
+    },
+    "table": {
+      "table_name": "<subquery3>",
+      "access_type": "eq_ref",
+      "possible_keys": ["distinct_key"],
+      "key": "distinct_key",
+      "key_length": "4",
+      "used_key_parts": ["kunde_id"],
+      "ref": ["func"],
+      "r_loops": 500,
+      "rows": 1,
+      "r_rows": 0.8,
+      "r_table_time_ms": 0.259663382,
+      "r_other_time_ms": 0.139546691,
+      "filtered": 100,
+      "r_filtered": 100,
+      "materialized": {
+        "unique": 1,
+        "query_block": {
+          "select_id": 3,
+          "table": {
+            "table_name": "bestellungen",
+            "access_type": "ALL",
+            "possible_keys": ["fk_best_kunde"],
+            "r_loops": 1,
+            "rows": 6000,
+            "r_rows": 6000,
+            "r_table_time_ms": 0.762867159,
+            "r_other_time_ms": 0.351511109,
+            "filtered": 100,
+            "r_filtered": 33.33333333,
+            "attached_condition": "bestellungen.`status` = 'storniert'"
+          }
+        }
+      }
+    },
+    "subqueries": [
+      {
+        "expression_cache": {
+          "state": "disabled",
+          "r_loops": 200,
+          "r_hit_ratio": 0,
+          "query_block": {
+            "select_id": 2,
+            "r_loops": 400,
+            "r_total_time_ms": 1.182548772,
+            "table": {
+              "table_name": "b",
+              "access_type": "ref",
+              "possible_keys": ["fk_best_kunde"],
+              "key": "fk_best_kunde",
+              "key_length": "4",
+              "used_key_parts": ["kunde_id"],
+              "ref": ["shop.k.id"],
+              "r_loops": 400,
+              "rows": 3000,
+              "r_rows": 2.5,
+              "r_table_time_ms": 0.970225097,
+              "r_other_time_ms": 0.124583767,
+              "filtered": 100,
+              "r_filtered": 100
+            }
+          }
+        }
+      }
+    ]
+  }
+}

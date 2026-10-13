@@ -1,0 +1,191 @@
+.dialog.wide {
+  width: 680px;
+}
+
+.grid {
+  grid-template-columns: 110px minmax(0, 1fr);
+}
+
+.radios {
+  min-width: 0;
+}
+
+.conns {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.bulk {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+}
+
+.link {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.list {
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 0;
+  background: var(--input-bg);
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 8px;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--hover, var(--sel));
+  }
+
+  .name {
+    flex: none;
+    max-width: 45%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .meta {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+  }
+}
+
+.dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+}
+
+.key {
+  display: inline-flex;
+  color: var(--warn);
+}
+
+.pw {
+  display: flex;
+  gap: 6px;
+
+  input {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.file {
+  display: flex;
+  gap: 6px;
+
+  input {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.okline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ok);
+}
+
+/* Import: eine Zeile je Verbindung mit Entscheidung */
+.imp {
+  padding: 0;
+
+  .row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 6px 8px;
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+
+    &:last-child {
+      border-bottom: 0;
+    }
+
+    &.skip .what {
+      opacity: 0.6;
+    }
+
+    .dot {
+      margin-top: 5px;
+    }
+  }
+
+  .what {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .title {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    overflow: hidden;
+    white-space: nowrap;
+
+    .dim {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: 12px;
+    }
+  }
+
+  .status {
+    font-size: 12px;
+    color: var(--fg-dim);
+
+    &.new {
+      color: var(--ok);
+    }
+
+    &.diff {
+      color: var(--warn);
+    }
+  }
+
+  .small {
+    font-size: 12px;
+  }
+
+  select {
+    flex: none;
+    max-width: 210px;
+  }
+}
+
+.note-line {
+  margin-top: 4px;
+  font-size: 12px;
+}
+
+.path {
+  word-break: break-all;
+}
+
+.off {
+  opacity: 0.5;
+}

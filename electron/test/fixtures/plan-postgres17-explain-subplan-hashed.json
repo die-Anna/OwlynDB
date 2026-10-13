@@ -1,0 +1,46 @@
+[
+  {
+    "Plan": {
+      "Node Type": "Aggregate",
+      "Strategy": "Plain",
+      "Partial Mode": "Simple",
+      "Parallel Aware": false,
+      "Async Capable": false,
+      "Startup Cost": 4668.18,
+      "Total Cost": 4668.19,
+      "Plan Rows": 1,
+      "Plan Width": 8,
+      "Plans": [
+        {
+          "Node Type": "Seq Scan",
+          "Parent Relationship": "Outer",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Relation Name": "fx_kunden",
+          "Alias": "fx_kunden",
+          "Startup Cost": 4284.18,
+          "Total Cost": 4643.18,
+          "Plan Rows": 10000,
+          "Plan Width": 0,
+          "Filter": "(NOT (ANY (id = (hashed SubPlan 1).col1)))",
+          "Plans": [
+            {
+              "Node Type": "Seq Scan",
+              "Parent Relationship": "SubPlan",
+              "Subplan Name": "SubPlan 1",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Relation Name": "fx_bestellungen",
+              "Alias": "fx_bestellungen",
+              "Startup Cost": 0,
+              "Total Cost": 4274,
+              "Plan Rows": 4072,
+              "Plan Width": 4,
+              "Filter": "((betrag > '100'::numeric) AND ((status)::text = 'storniert'::text))"
+            }
+          ]
+        }
+      ]
+    }
+  }
+]

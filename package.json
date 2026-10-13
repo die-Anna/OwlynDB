@@ -1,0 +1,210 @@
+{
+  "name": "owlyndb",
+  "productName": "OwlynDB",
+  "version": "0.1.0",
+  "description": "OwlynDB – Datenbank-Client für MySQL/MariaDB, PostgreSQL, SQL Server und Elasticsearch. One Tool to Bind Them.",
+  "private": true,
+  "author": "die-Anna",
+  "license": "MIT",
+  "homepage": "https://github.com/die-Anna/OwlynDB#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/die-Anna/OwlynDB.git"
+  },
+  "bugs": {
+    "url": "https://github.com/die-Anna/OwlynDB/issues"
+  },
+  "keywords": [
+    "database",
+    "sql",
+    "mysql",
+    "mariadb",
+    "postgresql",
+    "sql-server",
+    "elasticsearch",
+    "electron",
+    "angular"
+  ],
+  "main": "dist-electron/electron/main.js",
+  "desktopName": "owlyndb.desktop",
+  "scripts": {
+    "build:ui": "cd ui && npm run build -- --base-href ./",
+    "build:electron": "tsc -p tsconfig.electron.json",
+    "build": "npm run build:electron && npm run build:ui",
+    "start": "npm run build && electron .",
+    "electron": "electron .",
+    "test": "npm run build:electron && node dist-electron/electron/test/all.js",
+    "test:drivers": "npm run build:electron && node dist-electron/electron/test/drivers.test.js",
+    "test:tls": "npm run build:electron && node dist-electron/electron/test/tls.test.js",
+    "test:export": "npm run build:electron && node dist-electron/electron/test/export.test.js",
+    "test:haproxy": "npm run build:electron && node dist-electron/electron/test/haproxy.test.js",
+    "test:readonly": "npm run build:electron && node dist-electron/electron/test/readonly.test.js",
+    "test:dump": "npm run build:electron && node dist-electron/electron/test/dump.test.js",
+    "test:edit": "npm run build:electron && node dist-electron/electron/test/edit.test.js",
+    "test:routines": "npm run build:electron && node dist-electron/electron/test/routines.test.js",
+    "test:profile": "npm run build:electron && node dist-electron/electron/test/profile.test.js",
+    "test:search": "npm run build:electron && node dist-electron/electron/test/search.test.js",
+    "test:compare": "npm run build:electron && node dist-electron/electron/test/compare.test.js",
+    "test:history": "npm run build:electron && node dist-electron/electron/test/history.test.js",
+    "test:ssh": "npm run build:electron && node dist-electron/electron/test/ssh.test.js",
+    "test:plan": "npm run build:electron && node dist-electron/electron/test/plan.test.js",
+    "test:copy": "npm run build:electron && node dist-electron/electron/test/copy.test.js",
+    "test:sessions": "npm run build:electron && node dist-electron/electron/test/sessions.test.js",
+    "test:er": "npm run build:electron && node dist-electron/electron/test/er.test.js",
+    "test:datacompare": "npm run build:electron && node dist-electron/electron/test/datacompare.test.js",
+    "test:subset": "npm run build:electron && node dist-electron/electron/test/subset.test.js",
+    "test:settings": "npm run build:electron && node dist-electron/electron/test/settings.test.js",
+    "test:elastic": "npm run build:electron && node dist-electron/electron/test/elastic.test.js",
+    "test:stream": "npm run build:electron && node dist-electron/electron/test/stream.test.js",
+    "test:close": "npm run build:electron && node dist-electron/electron/test/close.test.js",
+    "test:import": "npm run build:electron && node dist-electron/electron/test/import.test.js",
+    "test:postgres": "npm run build:electron && node dist-electron/electron/test/postgres.test.js",
+    "test:mysql": "npm run build:electron && node dist-electron/electron/test/mysql.test.js",
+    "test:mssql": "npm run build:electron && node dist-electron/electron/test/mssql.test.js",
+    "test:unit": "npm run build:electron && node --test --test-reporter=spec \"dist-electron/electron/test/unit/*.test.js\"",
+    "testdb:up": "docker compose -f dev/docker-compose.yml up -d",
+    "testdb:es": "docker compose -f dev/docker-compose.yml --profile elastic up -d",
+    "testdb:down": "docker compose -f dev/docker-compose.yml down",
+    "notices": "node dev/third-party-notices.mjs",
+    "dist": "npm run build && electron-builder --win",
+    "dist:dir": "npm run build && electron-builder --win --dir",
+    "dist:linux": "npm run build && electron-builder --linux",
+    "dist:mac": "npm run build && electron-builder --mac"
+  },
+  "dependencies": {
+    "exceljs": "^4.4.0",
+    "mssql": "^12.7.4",
+    "mysql2": "^3.24.5",
+    "node-forge": "^1.4.0",
+    "pg": "^8.23.1",
+    "pg-copy-streams": "^7.0.0",
+    "pg-cursor": "^2.22.1",
+    "ssh2": "^1.17.0"
+  },
+  "devDependencies": {
+    "@types/mssql": "^12.3.0",
+    "@types/node": "^22.20.5",
+    "@types/node-forge": "^1.3.14",
+    "@types/pg": "^8.23.1",
+    "@types/pg-copy-streams": "^1.2.5",
+    "@types/pg-cursor": "^2.7.2",
+    "@types/ssh2": "^1.15.6",
+    "electron": "^44.5.1",
+    "electron-builder": "^26.15.3",
+    "typescript": "^6.0.3"
+  },
+  "build": {
+    "appId": "io.github.die-anna.owlyndb",
+    "productName": "OwlynDB",
+    "copyright": "Copyright © 2026 die-Anna",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist-electron/**/*",
+      "!dist-electron/electron/test/**",
+      "!**/*.map",
+      "ui/dist/ui/browser/**/*",
+      "package.json"
+    ],
+    "asar": true,
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "build/icon.png",
+      "extraFiles": [
+        {
+          "from": "THIRD-PARTY-NOTICES.txt",
+          "to": "THIRD-PARTY-NOTICES.txt"
+        },
+        {
+          "from": "LICENSE",
+          "to": "LICENSE.txt"
+        }
+      ]
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon-mac.png",
+      "category": "public.app-category.developer-tools",
+      "darkModeSupport": true,
+      "identity": "-",
+      "hardenedRuntime": false,
+      "extraResources": [
+        {
+          "from": "THIRD-PARTY-NOTICES.txt",
+          "to": "THIRD-PARTY-NOTICES.txt"
+        },
+        {
+          "from": "LICENSE",
+          "to": "LICENSE.txt"
+        }
+      ]
+    },
+    "dmg": {
+      "artifactName": "OwlynDB-${version}-mac-${arch}.${ext}"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "build/icon-512.png",
+      "category": "Development",
+      "syncDesktopName": true,
+      "synopsis": "Datenbank-Client für MySQL/MariaDB, PostgreSQL, SQL Server und Elasticsearch",
+      "maintainer": "die-Anna <47315953+die-Anna@users.noreply.github.com>",
+      "extraFiles": [
+        {
+          "from": "THIRD-PARTY-NOTICES.txt",
+          "to": "THIRD-PARTY-NOTICES.txt"
+        },
+        {
+          "from": "LICENSE",
+          "to": "LICENSE.txt"
+        }
+      ]
+    },
+    "appImage": {
+      "artifactName": "OwlynDB-${version}-linux-${arch}.${ext}"
+    },
+    "deb": {
+      "depends": [
+        "libgtk-3-0",
+        "libnotify4",
+        "libnss3",
+        "libxss1",
+        "libxtst6",
+        "xdg-utils",
+        "libatspi2.0-0",
+        "libuuid1",
+        "libsecret-1-0",
+        "libgbm1",
+        "libasound2"
+      ]
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "OwlynDB",
+      "artifactName": "OwlynDB-Setup-${version}.${ext}",
+      "include": "build/installer.nsh"
+    },
+    "portable": {
+      "artifactName": "OwlynDB-${version}-portable.${ext}"
+    }
+  }
+}

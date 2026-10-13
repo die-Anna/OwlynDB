@@ -1,0 +1,40 @@
+{
+  "query_block": {
+    "select_id": 1,
+    "cost": 212.2957769,
+    "filesort": {
+      "sort_key": "sum(b.betrag) desc",
+      "temporary_table": {
+        "nested_loop": [
+          {
+            "table": {
+              "table_name": "b",
+              "access_type": "ALL",
+              "possible_keys": ["ix_fx_kunde"],
+              "loops": 1,
+              "rows": 200187,
+              "cost": 33.1610542,
+              "filtered": 100,
+              "attached_condition": "b.`status` = 'offen'"
+            }
+          },
+          {
+            "table": {
+              "table_name": "k",
+              "access_type": "eq_ref",
+              "possible_keys": ["PRIMARY"],
+              "key": "PRIMARY",
+              "key_length": "4",
+              "used_key_parts": ["id"],
+              "ref": ["plan_fx.b.kunde_id"],
+              "loops": 200187,
+              "rows": 1,
+              "cost": 179.1347227,
+              "filtered": 100
+            }
+          }
+        ]
+      }
+    }
+  }
+}

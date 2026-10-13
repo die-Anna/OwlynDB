@@ -1,0 +1,147 @@
+<div class="toolbar">
+  @if (schemas().length > 1) {
+    <select class="schema" title="Schema" [ngModel]="tab().schema" (ngModelChange)="setSchema($event)">
+      @for (s of schemas(); track s) {
+        <option [value]="s">{{ s }}</option>
+      }
+    </select>
+  }
+  @if (tab().focus && !focusMissing()) {
+    <span class="focus" title="Nur Tabellen, die über Fremdschlüssel mit dieser verbunden sind">
+      ab <b>{{ tab().focus }}</b>
+      <button type="button" class="btn icon" title="Wieder alle Tabellen zeigen" (click)="setFocus(undefined)"><app-icon name="close" [size]="12" /></button>
+    </span>
+    <select title="So viele Schritte über Fremdschlüssel" [ngModel]="depth()" (ngModelChange)="setDepth($event)">
+      <option [ngValue]="1">Nachbarn</option>
+      <option [ngValue]="2">2 Schritte</option>
+      <option [ngValue]="3">3 Schritte</option>
+      <option [ngValue]="0">alle verbundenen</option>
+    </select>
+    <span class="sep"></span>
+  }
+  <label class="check" title="Nur Primär- und Fremdschlüsselspalten zeigen – übersichtlicher bei vielen Tabellen">
+    <input type="checkbox" [ngModel]="keysOnlyOn()" (ngModelChange)="setKeysOnly($event)" /> nur Schlüssel
+  </label>
+  <input
+    type="text"
+    class="search"
+    placeholder="Tabelle suchen …"
+    title="Enter: zum nächsten Treffer, Esc: leeren"
+    [class.none]="search().trim() && !matches().length"
+    [ngModel]="search()"
+    (ngModelChange)="setSearch($event)"
+    (keydown.enter)="nextMatch()"
+    (keydown.escape)="setSearch('')"
+  />
+  @if (search().trim()) {
+    <span class="dim hits">{{ matches().length }} Treffer</span>
+  }
+  <span class="grow"></span>
+  <button type="button" class="btn icon" title="Verkleinern (−)" (click)="zoomBy(0.8)"><app-icon name="minus" /></button>
+  <span #zoomText class="zoom" [title]="'Strg+Mausrad: zoomen' | keys">100 %</span>
+  <button type="button" class="btn icon" title="Vergrößern (+)" (click)="zoomBy(1.25)"><app-icon name="plus" /></button>
+  <button type="button" class="btn" title="Ganzes Diagramm zeigen (0)" [disabled]="!placed().length" (click)="fit()"><app-icon name="fit" /> Einpassen</button>
+  @if (moved().size) {
+    <button type="button" class="btn" title="Verschobene Tabellen zurück an ihren Platz" (click)="relayout()">Neu anordnen</button>
+  }
+  <span class="sep"></span>
+  <button type="button" class="btn" title="Als Bild in die Zwischenablage oder als SVG-Datei" [disabled]="!placed().length" (click)="exportMenu($event)">
+    <app-icon name="download" /> Export
+  </button>
+  <button type="button" class="btn icon" title="Neu laden" [disabled]="loading()" (click)="load()"><app-icon name="refresh" /></button>
+</div>
+
+@if (error()) {
+  <div class="error-box">{{ error() }}</div>
+}
+@if (notice(); as n) {
+  <div class="notice">
+    <span class="text">{{ n.text }}</span>
+    @if (n.file) {
+      <button type="button" class="btn" (click)="showFile(n.file)">Im Ordner zeigen</button>
+    }
+    <button type="button" class="btn icon" title="Ausblenden" (click)="notice.set(null)"><app-icon name="close" [size]="12" /></button>
+  </div>
+}
+@if (focusMissing()) {
+  <div class="notice warn"><span class="text">Tabelle „{{ tab().focus }}“ nicht gefunden – alle Tabellen angezeigt.</span></div>
+}
+
+<div #canvas class="canvas" tabindex="0" (mousedown)="downCanvas($event)" (wheel)="wheel($event)" (contextmenu)="canvasMenu($event)" (keydown)="key($event)">
+  <svg class="er">
+    <g #world>
+      @for (e of edges(); track e.key) {
+        <g [attr.class]="'edge ' + (edgeState().get(e.key) ?? '')">
+          <title>{{ e.tip }}</title>
+          <path class="hit" [attr.d]="e.line" />
+          <path class="line" [attr.d]="e.line" />
+          <path class="ends" [attr.d]="e.ends" />
+          @if (e.dots) {
+            <path class="dot" [attr.d]="e.dots" />
+          }
+        </g>
+      }
+      @for (b of placed(); track b.key) {
+        <g
+          [attr.class]="'box ' + (boxState().get(b.key) ?? '') + (b.external ? ' ext' : '')"
+          [attr.transform]="'translate(' + b.x + ' ' + b.y + ')'"
+          (mousedown)="downBox($event, b)"
+          (dblclick)="dblBox(b)"
+          (contextmenu)="boxMenu($event, b)"
+        >
+          <title>{{ b.tip }}</title>
+          <rect class="body" [attr.width]="b.w" [attr.height]="b.h" rx="5" />
+          <path class="head" [attr.d]="b.head" />
+          <text class="title" x="8" y="17">{{ b.title }}</text>
+          @if (b.rowsLabel) {
+            <text class="rows" [attr.x]="b.w - 8" y="17" text-anchor="end">{{ b.rowsLabel }}</text>
+          }
+          @for (c of b.cols; track c.name) {
+            <g class="col" [attr.transform]="'translate(0 ' + c.y + ')'">
+              <title>{{ c.tip }}</title>
+              <rect class="rowbg" x="1" [attr.width]="b.w - 2" height="18" />
+              @if (c.pk) {
+                <path class="pk" [attr.d]="KEY_PATH" transform="translate(6 3) scale(0.5)" />
+              } @else if (c.fk) {
+                <path class="fk" [attr.d]="LINK_PATH" transform="translate(6 3) scale(0.5)" />
+              }
+              <text class="name" [class.pkname]="c.pk" x="24" y="13">{{ c.label }}</text>
+              <text class="type" [attr.x]="b.w - 8" y="13" text-anchor="end">{{ c.typeLabel }}</text>
+            </g>
+          }
+          @if (b.more) {
+            <g class="more" [attr.transform]="'translate(0 ' + b.moreY + ')'" (click)="toggleOpen(b, $event)">
+              <title>{{ b.more.startsWith('+') ? 'Alle Spalten zeigen' : 'Wieder nur die ersten bzw. die Schlüsselspalten zeigen' }}</title>
+              <rect class="rowbg" x="1" [attr.width]="b.w - 2" height="18" />
+              <text x="24" y="13">{{ b.more }}</text>
+            </g>
+          }
+          <rect class="frame" [attr.width]="b.w" [attr.height]="b.h" rx="5" />
+        </g>
+      }
+    </g>
+  </svg>
+  @if (model(); as m) {
+    @if (!m.tables.length) {
+      <div class="overlay">Keine Tabellen in {{ dialect() === 'mysql' ? 'dieser Datenbank' : 'diesem Schema' }}.</div>
+    }
+  } @else if (loading()) {
+    <div class="overlay">lädt …</div>
+  }
+</div>
+
+<div class="foot">
+  @if (model(); as m) {
+    <span>{{ placed().length }} Tabelle{{ placed().length === 1 ? '' : 'n' }} · {{ edges().length }} Fremdschlüssel</span>
+    @if (m.tables.length > 1 && !m.foreignKeys.length) {
+      <span class="warn-text">– keine Fremdschlüssel definiert, die Tabellen stehen nur nebeneinander</span>
+    }
+  }
+  <span class="grow"></span>
+  <span class="legend" title="Krähenfuß-Notation">
+    <svg width="26" height="12"><path d="M2 6H24M2 1L12 6L2 11" /></svg> viele
+    <svg width="26" height="12"><path d="M2 6H24M10 1V11M14 1V11" /></svg> genau eine
+    <svg width="26" height="12"><path d="M2 6H24M10 1V11" /><circle cx="17" cy="6" r="3.5" /></svg> keine oder eine (NULL erlaubt)
+  </span>
+  <span class="dim">{{ '· Ziehen: verschieben · Strg+Mausrad: zoomen · Doppelklick: Daten' | keys }}</span>
+</div>

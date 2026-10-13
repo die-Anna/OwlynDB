@@ -1,0 +1,150 @@
+<div class="toolbar">
+  <button type="button" class="btn" title="Liste neu laden" [disabled]="loading()" (click)="load()"><app-icon name="refresh" /> Aktualisieren</button>
+  <label class="check" title="alle 3 Sekunden neu laden, solange dieser Tab sichtbar ist">
+    <input type="checkbox" [ngModel]="auto()" (ngModelChange)="auto.set($event)" /> laufend
+  </label>
+  <label class="check" title="Sitzungen ohne laufende Abfrage, ohne offene Transaktion und ohne Sperren ausblenden">
+    <input type="checkbox" [ngModel]="hideIdle()" (ngModelChange)="hideIdle.set($event)" /> Leerlauf ausblenden
+  </label>
+  <label class="check" title="Hintergrundprozesse des Servers (z. B. autovacuum, event_scheduler)">
+    <input type="checkbox" [ngModel]="showSystem()" (ngModelChange)="showSystem.set($event)" /> Systemprozesse
+  </label>
+  <input type="text" class="search" placeholder="Filter: Benutzer, Datenbank, Abfrage …" [ngModel]="search()" (ngModelChange)="search.set($event)" />
+  <span class="grow"></span>
+  @if (readOnly()) {
+    <span class="ro" title="Die Verbindung steht auf „Nur lesen“: Sitzungen lassen sich nur ansehen"><app-icon name="lock" /> nur Anzeige</span>
+  }
+  <span class="dim stand">
+    @if (list(); as l) {
+      Stand {{ time(at()) }} · {{ visible().length }} Sitzung{{ visible().length === 1 ? '' : 'en' }}{{ hiddenText() }}
+      @if (paused()) {
+        · <span title="„laufend“ meldet sich nicht neu an – „Aktualisieren“ verbindet">pausiert, nicht verbunden</span>
+      }
+    } @else if (loading()) {
+      lädt …
+    }
+  </span>
+  <span class="dim conn" [title]="list()?.server ?? ''">{{ conn()?.name }}</span>
+</div>
+
+@if (error()) {
+  <div class="error-box">{{ error() }}</div>
+}
+@if (notice(); as n) {
+  <div class="notice">{{ n }}<button type="button" class="btn icon" title="Ausblenden" (click)="notice.set(null)"><app-icon name="close" [size]="12" /></button></div>
+}
+
+<div class="table">
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Benutzer</th>
+        <th>Datenbank</th>
+        <th>Zustand</th>
+        <th class="num" title="Laufzeit der aktuellen Abfrage bzw. Dauer des Zustands">Dauer</th>
+        <th class="num" title="seit Beginn der offenen Transaktion">Transaktion</th>
+        <th>Wartet auf</th>
+        <th class="query">Abfrage</th>
+        <th>Client · Programm</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (r of visible(); track r.s.id) {
+        <tr
+          [class.sel]="r.s.id === selectedId()"
+          [class.blocker]="r.blocking > 0"
+          [class.blocked]="r.s.blockedBy.length > 0"
+          [class.idle]="r.rank >= 4"
+          (click)="select(r)"
+        >
+          <td class="id mono">
+            {{ r.s.id }}
+            @if (r.tab) {
+              <span class="badge own" title="Abfrage-Tab in diesem Programm">{{ r.tab }}</span>
+            }
+            @if (r.blocking) {
+              <span class="badge bad" title="So viele Sitzungen warten auf eine Sperre dieser Sitzung">blockiert {{ r.blocking }}</span>
+            }
+          </td>
+          <td>{{ r.s.user }}</td>
+          <td>{{ r.s.database }}</td>
+          <td>{{ r.s.state }}</td>
+          <td class="num" [class]="r.s.active ? level(r.s.seconds) : ''">{{ duration(r.s.seconds) }}</td>
+          <td class="num" [class]="level(r.s.txSeconds)">{{ duration(r.s.txSeconds) }}</td>
+          <td class="wait">
+            @if (r.s.blockedBy.length) {
+              <span class="badge warn">Sperre von {{ r.s.blockedBy.join(', ') }}</span>
+            }
+            {{ r.s.wait }}
+          </td>
+          <td class="query mono" [title]="r.s.query ?? ''">{{ oneLine(r.s.query) }}</td>
+          <td class="client">{{ r.s.client }}{{ r.s.program ? ' · ' + r.s.program : '' }}</td>
+        </tr>
+      } @empty {
+        <tr class="empty">
+          <td colspan="9">
+            @if (list()) {
+              @if (hidden().filter) {
+                Keine Sitzung passt zum Filter.
+              } @else if (hidden().idle) {
+                Nichts läuft gerade – {{ hidden().idle }} Sitzung(en) im Leerlauf ausgeblendet.
+              } @else {
+                Keine Sitzungen sichtbar.
+              }
+            }
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>
+
+@if (selected(); as r) {
+  <div class="detail">
+    <div class="head">
+      <b>Sitzung {{ r.s.id }}</b>
+      <span class="dim">{{ r.s.user }}{{ r.s.database ? ' · ' + r.s.database : '' }} · {{ r.s.state }}</span>
+      <span class="grow"></span>
+      @if (r.tabId) {
+        <button type="button" class="btn" (click)="goToTab(r)"><app-icon name="query" /> Zum Tab „{{ r.tab }}“</button>
+      }
+      @if (r.s.query) {
+        <button type="button" class="btn" title="Text dieser Abfrage in einem neuen Abfrage-Tab" (click)="openQuery(r)"><app-icon name="plus" /> In neuer Abfrage</button>
+      }
+      @if (list()?.canCancelQuery && r.s.active) {
+        <button type="button" class="btn" [disabled]="readOnly()" [title]="readOnly() ? 'Nur lesen: nur Anzeige' : 'Laufende Abfrage abbrechen, die Verbindung bleibt'" (click)="kill(r, 'query')">
+          <app-icon name="stop" /> Abfrage abbrechen
+        </button>
+      }
+      <button type="button" class="btn danger" [disabled]="readOnly()" [title]="readOnly() ? 'Nur lesen: nur Anzeige' : 'Verbindung trennen; eine offene Transaktion wird zurückgerollt'" (click)="kill(r, 'session')">
+        <app-icon name="close" /> Sitzung beenden
+      </button>
+    </div>
+    <div class="facts">
+      @if (r.s.client || r.s.program) {
+        <span><span class="dim">Client</span> {{ r.s.client }}{{ r.s.program ? ' · ' + r.s.program : '' }}</span>
+      }
+      @if (r.s.txSeconds !== undefined) {
+        <span><span class="dim">Transaktion offen seit</span> {{ duration(r.s.txSeconds) }}</span>
+      }
+      @if (r.s.wait) {
+        <span><span class="dim">wartet auf</span> {{ r.s.wait }}</span>
+      }
+      @if (r.s.started) {
+        <span><span class="dim">angemeldet</span> {{ r.s.started }}</span>
+      }
+    </div>
+    @if (r.s.query) {
+      <pre class="sql mono">{{ r.s.query }}</pre>
+    }
+  </div>
+}
+
+<div class="foot dim">
+  Abbrechen und Beenden gehen nur auf dem Server dieser Liste und nur, solange die Sitzung noch dieselbe ist.
+  @if (list() && !list()!.canCancelQuery) {
+    SQL Server kann eine Abfrage nicht einzeln abbrechen – nur die ganze Sitzung beenden.
+  }
+  Wer nicht alle Sitzungen sieht, braucht dafür Rechte (MySQL: PROCESS, PostgreSQL: pg_read_all_stats, SQL Server: VIEW SERVER STATE).
+</div>

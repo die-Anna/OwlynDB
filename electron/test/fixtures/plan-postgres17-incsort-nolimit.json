@@ -1,0 +1,89 @@
+[
+  {
+    "Plan": {
+      "Node Type": "Incremental Sort",
+      "Parallel Aware": false,
+      "Async Capable": false,
+      "Startup Cost": 0.91,
+      "Total Cost": 15205.31,
+      "Plan Rows": 200000,
+      "Plan Width": 13,
+      "Actual Startup Time": 0.119,
+      "Actual Total Time": 213.705,
+      "Actual Rows": 200000,
+      "Actual Loops": 1,
+      "Sort Key": [
+        "kunde_id",
+        "betrag"
+      ],
+      "Presorted Key": [
+        "kunde_id"
+      ],
+      "Full-sort Groups": {
+        "Group Count": 5000,
+        "Sort Methods Used": [
+          "quicksort"
+        ],
+        "Sort Space Memory": {
+          "Average Sort Space Used": 26,
+          "Peak Sort Space Used": 26
+        }
+      },
+      "Shared Hit Blocks": 200231,
+      "Shared Read Blocks": 0,
+      "Shared Dirtied Blocks": 0,
+      "Shared Written Blocks": 0,
+      "Local Hit Blocks": 0,
+      "Local Read Blocks": 0,
+      "Local Dirtied Blocks": 0,
+      "Local Written Blocks": 0,
+      "Temp Read Blocks": 0,
+      "Temp Written Blocks": 0,
+      "Plans": [
+        {
+          "Node Type": "Index Scan",
+          "Parent Relationship": "Outer",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Scan Direction": "Forward",
+          "Index Name": "ix_fx_kunde",
+          "Relation Name": "fx_bestellungen",
+          "Alias": "fx_bestellungen",
+          "Startup Cost": 0.29,
+          "Total Cost": 8986.45,
+          "Plan Rows": 200000,
+          "Plan Width": 13,
+          "Actual Startup Time": 0.038,
+          "Actual Total Time": 110.779,
+          "Actual Rows": 200000,
+          "Actual Loops": 1,
+          "Shared Hit Blocks": 200231,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        }
+      ]
+    },
+    "Planning": {
+      "Shared Hit Blocks": 0,
+      "Shared Read Blocks": 0,
+      "Shared Dirtied Blocks": 0,
+      "Shared Written Blocks": 0,
+      "Local Hit Blocks": 0,
+      "Local Read Blocks": 0,
+      "Local Dirtied Blocks": 0,
+      "Local Written Blocks": 0,
+      "Temp Read Blocks": 0,
+      "Temp Written Blocks": 0
+    },
+    "Planning Time": 0.111,
+    "Triggers": [],
+    "Execution Time": 229.16
+  }
+]

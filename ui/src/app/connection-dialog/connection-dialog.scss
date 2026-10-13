@@ -1,0 +1,173 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 800;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 6vh;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.dialog {
+  width: 560px;
+  max-width: calc(100vw - 32px);
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+header {
+  display: flex;
+  align-items: center;
+  padding: 10px 10px 4px 16px;
+
+  h2 {
+    flex: 1;
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+  }
+}
+
+.types {
+  display: flex;
+  gap: 6px;
+  padding: 8px 16px 4px;
+
+  .type {
+    flex: 1;
+    height: 30px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    background: var(--bg-2);
+    cursor: pointer;
+
+    &.on {
+      border-color: var(--accent);
+      background: var(--sel);
+      font-weight: 600;
+    }
+  }
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  gap: 8px 10px;
+  align-items: center;
+  padding: 12px 16px;
+
+  > label {
+    color: var(--fg-dim);
+  }
+}
+
+.hostport {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  input:first-child {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .port {
+    width: 80px;
+  }
+}
+
+.dim {
+  color: var(--fg-dim);
+}
+
+.checks {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+
+  &.off {
+    opacity: 0.5;
+  }
+}
+
+.file {
+  display: flex;
+  gap: 6px;
+
+  input {
+    flex: 1;
+    min-width: 0;
+    font-size: 12px;
+  }
+}
+
+.note {
+  color: var(--fg-dim);
+  font-size: 12px;
+  line-height: 1.4;
+
+  &.warn {
+    color: var(--danger);
+  }
+}
+
+.colors {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  .swatch {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    cursor: pointer;
+
+    &.on {
+      outline: 2px solid var(--accent);
+      outline-offset: 1px;
+    }
+  }
+
+  .hint {
+    margin-left: 6px;
+    font-size: 12px;
+  }
+}
+
+.result {
+  margin: 0 16px;
+  padding: 7px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  white-space: pre-wrap;
+  word-break: break-word;
+  user-select: text;
+
+  &.ok {
+    border-color: var(--ok);
+    color: var(--ok);
+  }
+}
+
+footer {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px 14px;
+
+  .grow {
+    flex: 1;
+  }
+}

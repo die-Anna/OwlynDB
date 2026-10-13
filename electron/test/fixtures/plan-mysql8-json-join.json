@@ -1,0 +1,73 @@
+{
+  "query_block": {
+    "select_id": 1,
+    "cost_info": {
+      "query_cost": "23118.54"
+    },
+    "ordering_operation": {
+      "using_filesort": true,
+      "grouping_operation": {
+        "using_temporary_table": true,
+        "using_filesort": false,
+        "nested_loop": [
+          {
+            "table": {
+              "table_name": "b",
+              "access_type": "ALL",
+              "possible_keys": [
+                "ix_fx_kunde"
+              ],
+              "rows_examined_per_scan": 168817,
+              "rows_produced_per_join": 16881,
+              "filtered": "10.00",
+              "cost_info": {
+                "read_cost": "15521.78",
+                "eval_cost": "1688.17",
+                "prefix_cost": "17209.95",
+                "data_read_per_join": "923K"
+              },
+              "used_columns": [
+                "id",
+                "kunde_id",
+                "status",
+                "betrag"
+              ],
+              "attached_condition": "(`plan_fx`.`b`.`status` = 'offen')"
+            }
+          },
+          {
+            "table": {
+              "table_name": "k",
+              "access_type": "eq_ref",
+              "possible_keys": [
+                "PRIMARY",
+                "ix_fx_ort"
+              ],
+              "key": "PRIMARY",
+              "used_key_parts": [
+                "id"
+              ],
+              "key_length": "4",
+              "ref": [
+                "plan_fx.b.kunde_id"
+              ],
+              "rows_examined_per_scan": 1,
+              "rows_produced_per_join": 16881,
+              "filtered": "100.00",
+              "cost_info": {
+                "read_cost": "4220.43",
+                "eval_cost": "1688.17",
+                "prefix_cost": "23118.55",
+                "data_read_per_join": "1M"
+              },
+              "used_columns": [
+                "id",
+                "ort"
+              ]
+            }
+          }
+        ]
+      }
+    }
+  }
+}

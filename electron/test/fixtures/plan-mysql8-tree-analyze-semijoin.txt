@@ -1,0 +1,4 @@
+-> Aggregate: count(0)  (cost=4383 rows=1) (actual time=0.267..0.267 rows=1 loops=1)
+    -> Nested loop semijoin  (cost=2221 rows=21627) (actual time=0.0928..0.264 rows=4 loops=1)
+        -> Covering index scan on o using PRIMARY  (cost=0.65 rows=4) (actual time=0.0223..0.0261 rows=4 loops=1)
+        -> Covering index lookup on k using ix_fx_ort (ort=o.`name`)  (cost=808289 rows=5407) (actual time=0.0588..0.0588 rows=1 loops=4)

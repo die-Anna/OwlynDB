@@ -1,0 +1,248 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.conn {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+select {
+  max-width: 220px;
+}
+
+.error-box .btn {
+  margin-left: 12px;
+  font-family: var(--font);
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.split {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.btn.icon.on {
+  color: var(--accent);
+  background: var(--sel);
+}
+
+.editor {
+  flex: none;
+  min-height: 60px;
+}
+
+.handle {
+  flex: none;
+  height: 5px;
+  cursor: row-resize;
+  background: var(--bg-2);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+
+  &:hover {
+    background: var(--accent);
+  }
+}
+
+.results {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.rtabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px 8px 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-2);
+
+  > button {
+    padding: 4px 10px 5px;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    background: none;
+    color: var(--fg-dim);
+    cursor: pointer;
+    white-space: nowrap;
+
+    &.on {
+      color: var(--fg);
+      border-bottom-color: var(--accent);
+    }
+
+    &.bad {
+      color: var(--danger);
+    }
+
+    &.plantab {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .x {
+      display: inline-flex;
+      margin-left: 2px;
+      padding: 2px;
+      border-radius: 3px;
+      opacity: 0.55;
+
+      &:hover {
+        opacity: 1;
+        background: var(--bg-hover);
+      }
+    }
+  }
+
+  .grow {
+    flex: 1;
+  }
+
+  .summary {
+    font-size: 12px;
+    white-space: nowrap;
+    padding-bottom: 3px;
+  }
+}
+
+.badge {
+  margin-left: 4px;
+  padding: 0 5px;
+  border-radius: 8px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 10px;
+}
+
+.dim {
+  color: var(--fg-dim);
+}
+
+.grid {
+  flex: 1;
+  min-height: 0;
+}
+
+.messages {
+  flex: 1;
+  overflow: auto;
+  padding: 6px 0;
+  user-select: text;
+}
+
+.msg {
+  display: flex;
+  gap: 8px;
+  padding: 5px 12px;
+  border-bottom: 1px solid var(--border);
+
+  .state {
+    width: 14px;
+    flex: none;
+    color: var(--ok);
+    font-weight: 700;
+  }
+
+  .body {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .sql {
+    margin-top: 2px;
+    color: var(--fg-faint);
+    font-size: 11px;
+    white-space: pre-wrap;
+    max-height: 4.5em;
+    overflow: hidden;
+  }
+
+  .errtext {
+    margin-top: 3px;
+    color: var(--danger);
+    white-space: pre-wrap;
+  }
+
+  &.err .state {
+    color: var(--danger);
+  }
+
+  &.info .state {
+    color: var(--accent);
+  }
+
+  &.info .body {
+    font-size: 12px;
+    white-space: pre-wrap;
+  }
+}
+
+.hint {
+  padding: 16px 20px;
+  color: var(--fg-dim);
+  line-height: 1.5;
+
+  b {
+    color: var(--fg);
+    font-weight: 600;
+  }
+}
+
+:host ::ng-deep .executed-stmt {
+  background: rgba(77, 138, 240, 0.22);
+}
+
+.notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px 4px 12px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--warn) 16%, var(--bg));
+  color: var(--fg);
+  font-size: 12px;
+}
+
+.notice .btn {
+  margin-left: auto;
+}
+
+.ro {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tx {
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--warn);
+  color: #1e1f22;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}

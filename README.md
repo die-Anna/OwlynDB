@@ -14,6 +14,10 @@ Schlanker Datenbank-Client für **MySQL/MariaDB, SQL Server und PostgreSQL**: Ta
 Dazu **Elasticsearch** zum Lesen (siehe [unten](#elasticsearch)). Electron + Angular, die Treiber (mysql2, mssql, pg und ein
 eigener HTTP-Client für Elasticsearch) laufen im Electron-Hauptprozess.
 
+**Mit eingebautem SSH-Tunnel:** Datenbanken, die nur über einen SSH-Server erreichbar sind – die Produktion hinter dem
+Jump-Host, die Datenbank auf dem Webserver –, verbindet OwlynDB direkt. Kein `ssh -L` im Terminal, kein PuTTY nebenher, kein
+offener Port: Haken bei *SSH-Tunnel*, SSH-Server eintragen, fertig. [So geht's](#ssh-tunnel)
+
 ## Starten
 
 Voraussetzungen: Windows 10/11, macOS oder Linux (64-bit; entwickelt und getestet vor allem unter Windows) und Node.js (getestet mit 22.23.1).
@@ -155,6 +159,49 @@ Das Profil liegt unter macOS in `~/Library/Application Support/OwlynDB`, unter L
   beginnen, einen Apostroph davor – Excel führte sie sonst als Formel aus (Zahlenspalten bleiben, wie sie sind; abschaltbar über
   `protectFormulas` der Export-Optionen).
 
+## SSH-Tunnel
+
+Die Datenbank ist nur über SSH erreichbar? Dann braucht es kein `ssh -L` im Terminal und kein PuTTY nebenher: OwlynDB baut den
+Tunnel selbst auf, sobald die Verbindung geöffnet wird, und schließt ihn beim Trennen wieder. Das geht mit MySQL/MariaDB,
+PostgreSQL, SQL Server und Elasticsearch.
+
+- **Sicher wie `ssh`:** Den Fingerabdruck des SSH-Servers bestätigst du beim ersten Mal; ändert er sich später, warnt OwlynDB.
+- **Nur für dich:** Der lokale Tunnel-Port lauscht nur auf `127.0.0.1`, OwlynDB wählt ihn selbst und schließt ihn mit der Verbindung.
+- **Bleibt stehen:** Keepalive alle 15 s; reißt die Leitung trotzdem ab, baut OwlynDB den Tunnel beim nächsten Zugriff neu auf.
+- **Schlüssel oder Passwort:** Ohne Angabe nimmt OwlynDB die Standardschlüssel aus `~/.ssh`; Passwörter liegen verschlüsselt im Profil.
+- **Auch hinter einem TLS-Proxy** mit Client-Zertifikat (siehe [TLS und Client-Zertifikate](#tls-und-client-zertifikate)).
+
+### Beispiel
+
+Die PostgreSQL-Datenbank `shop` läuft auf einem Server und nimmt nur Verbindungen von dort selbst an (`localhost:5432`).
+Von außen erreichbar ist nur SSH: `ssh.example.com`, Anmeldung als `deploy` mit Schlüssel. Im Terminal wäre das
+
+```bash
+ssh -L 5432:localhost:5432 deploy@ssh.example.com
+```
+
+In OwlynDB unter *Verbindung anlegen*:
+
+<img src="docs/ssh-tunnel.png" alt="Verbindungsdialog mit SSH-Tunnel: Ziel localhost 5432, SSH-Server ssh.example.com, SSH-Benutzer deploy" width="560">
+
+| Feld | Eintrag | Bedeutung |
+|---|---|---|
+| Typ | PostgreSQL | |
+| Proxy | *SSH-Tunnel* angehakt | |
+| Ziel, Port | `localhost`, `5432` | die Datenbank **aus Sicht des SSH-Servers**, nicht von deinem PC aus. Läuft sie auf einem anderen Rechner im internen Netz: dessen Name, z. B. `db01.intern` |
+| Benutzer, Passwort, Datenbank | `app_read`, …, `shop` | Anmeldung an der Datenbank, wie ohne Tunnel |
+| SSH-Server, Port | `ssh.example.com`, `22` | der Rechner, auf dem du dich mit `ssh` anmeldest |
+| SSH-Benutzer | `deploy` | |
+| SSH-Schlüssel | leer | leer = `~/.ssh/id_ed25519`, `id_ecdsa`, `id_rsa`; sonst die Schlüsseldatei wählen (OpenSSH oder PuTTY-.ppk Version 2, Version 3 in PuTTYgen als OpenSSH exportieren) |
+| SSH-Passwort | leer oder … | die Passphrase des Schlüssels – oder das Passwort des SSH-Benutzers, wenn es keinen Schlüssel gibt |
+
+*Testen* prüft die Verbindung samt Tunnel, bevor du speicherst. Beim ersten Mal fragt OwlynDB nach dem Fingerabdruck des
+SSH-Servers: vergleichen und bestätigen, wie bei `ssh`. Eine lokal laufende Datenbank auf Port 5432 stört nicht, OwlynDB nimmt für
+den Tunnel einen freien Port.
+
+Häufigster Stolperstein: *Ziel* von deinem PC aus gedacht, etwa mit dem öffentlichen Namen des Servers. Die Verbindung zur
+Datenbank baut der SSH-Server auf – aus seiner Sicht ist sie meist `localhost`.
+
 ## TLS und Client-Zertifikate
 
 Im Verbindungsdialog: CA als **PEM**; das Client-Zertifikat als PEM (Zertifikat und Schlüssel getrennt oder in einer Datei) oder als
@@ -171,9 +218,8 @@ Im Verbindungsdialog: CA als **PEM**; das Client-Zertifikat als PEM (Zertifikat 
   (nginx stream, HAProxy, stunnel …), der das Client-Zertifikat prüft und dann zur Datenbank weiterreicht. Geht mit allen drei Datenbanken.
   Server/Port = der Proxy. Für SNI-Weiterleitung den Hostnamen eintragen oder bei einer IP den *SNI-Namen* setzen.
   Zertifikat und Schlüssel dürfen in einer Datei liegen (Feld *Schlüssel* leer lassen), wie bei `openssl s_client -cert`.
-- **SSH-Tunnel** (*Proxy*, wie `ssh -L`): *Ziel* = Datenbank aus Sicht des SSH-Servers (meist `localhost` und Port), dazu
-  SSH-Server, Benutzer, Schlüssel (leer = `~/.ssh/id_ed25519`, `id_ecdsa`, `id_rsa`) und bei Bedarf ein Passwort (für den Schlüssel
-  oder den Benutzer). Mit *TLS-Tunnel* zusammen läuft SSH im TLS-Tunnel zum Proxy, also wie
+- **SSH-Tunnel** (*Proxy*, wie `ssh -L`): Einrichtung mit Beispiel im Abschnitt [SSH-Tunnel](#ssh-tunnel). Mit *TLS-Tunnel*
+  zusammen läuft SSH im TLS-Tunnel zum Proxy, also wie
   `ssh -L 1433:localhost:1433 -o ProxyCommand="openssl s_client -quiet -connect <proxy>:<port> -servername <sni> -cert <pem>" <user>@…`:
   SSH-Server/Port = Proxy, *SNI-Name* = `-servername`, *Client-Zert.* = `-cert`.
   Der Hostschlüssel wird beim ersten Kontakt per Rückfrage bestätigt (Fingerabdruck wie bei `ssh`) und in `ssh-host-keys.json`

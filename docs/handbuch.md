@@ -544,6 +544,11 @@ node dev/cdp.mjs shot dev/shots/bild.png
 
 `DBV_SAVE_DIR` (Ordner) und `DBV_PICK_FILE` (Datei) ersetzen dabei den Speichern- bzw. Öffnen-Dialog.
 
+**Bilder für README und Handbuch** (`docs/bilder/`, je hell und dunkel): `npm run readme-bilder` baut, legt in einem
+Wegwerf-PostgreSQL (Docker, `127.0.0.1:15499`) einen erfundenen Webshop an (`dev/readme-bilder/webshop.cjs`), startet die App
+mit leerem Testprofil und nimmt jedes Motiv auf; danach sind App, Profil und Container wieder weg. Einzelne Motive ohne
+Bauen: `node dev/readme-bilder/aufnehmen.mjs plan datenvergleich`. Vor dem Einchecken die Bilder ansehen.
+
 ## Aufbau
 
 | Pfad | Inhalt |

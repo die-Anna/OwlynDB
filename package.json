@@ -66,6 +66,7 @@
     "testdb:es": "docker compose -f dev/docker-compose.yml --profile elastic up -d",
     "testdb:down": "docker compose -f dev/docker-compose.yml down",
     "notices": "node dev/third-party-notices.mjs",
+    "readme-bilder": "npm run build && node dev/readme-bilder/aufnehmen.mjs",
     "dist": "npm run build && electron-builder --win",
     "dist:dir": "npm run build && electron-builder --win --dir",
     "dist:linux": "npm run build && electron-builder --linux",

@@ -92,8 +92,14 @@
             </label>
           }
           <label class="check" title="Wie ssh -L: die Datenbank wird über einen SSH-Server erreicht">
-            <input type="checkbox" name="ssh" [ngModel]="!!form().options?.ssh" (ngModelChange)="setOption('ssh', $event)" /> SSH-Tunnel
+            <input type="checkbox" name="ssh" [ngModel]="!!form().options?.ssh" (ngModelChange)="setSsh($event)" /> SSH-Tunnel
           </label>
+          <!-- Elasticsearch: ohne SSH erledigt HTTPS den TLS-Weg; mit SSH kann SSH selbst durch einen TLS-Proxy laufen -->
+          @if (es() && form().options?.ssh) {
+            <label class="check" title="SSH läuft im TLS-Tunnel zu einem Proxy (z. B. HAProxy mit SNI), der das Client-Zertifikat prüft – wie ProxyCommand openssl s_client">
+              <input type="checkbox" name="tunnel" [ngModel]="!!form().options?.tunnel" (ngModelChange)="setOption('tunnel', $event)" /> TLS-Tunnel mit Client-Zertifikat
+            </label>
+          }
         </div>
 
         @if (form().options?.ssh) {

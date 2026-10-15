@@ -771,7 +771,7 @@ async function proxy() {
   });
 }
 
-async function viaManager(withSsh: boolean) {
+async function viaManager(withSsh: boolean, withSshProxy: boolean) {
   console.log('\nÜber den Manager (wie die Oberfläche)');
   const store = new ConnectionStore(path.join(mkdtempSync(path.join(os.tmpdir(), 'dbv-es-')), 'c.json'), { encrypt: (s) => 'x' + s, decrypt: (s) => s.slice(1) });
   const host = { pickFile: async () => null, saveFile: async () => null, showInFolder: () => undefined, confirmHostKey: async () => true };
@@ -806,6 +806,24 @@ async function viaManager(withSsh: boolean) {
         assert.match((await m.connect(viaSsh.id)).version, /^Elasticsearch 8\.10/);
         const db = (await m.listDatabases(viaSsh.id))[0];
         assert.ok((await m.listObjects(viaSsh.id, db, '')).some((o) => o.name === 'kunden'));
+      });
+    }
+    if (withSshProxy) {
+      // SSH-Server hinter einem TLS-Proxy, der nach SNI weiterleitet und ein Client-Zertifikat verlangt (wie ProxyCommand
+      // openssl s_client): ohne TLS-Tunnel trennt der Proxy schon vor dem SSH-Handshake
+      await step('SSH im TLS-Tunnel durch HAProxy (SNI + Client-Zertifikat): es8 erreichbar, ohne TLS-Tunnel getrennt', async () => {
+        const ssh: ConnectionOptions = { ssh: true, sshHost: '127.0.0.1', sshPort: 15422, sshUser: 'tunnel', sshKeyFile: cert('ssh_client') };
+        const plain = await store.save(input(ssh, { host: 'es8', port: 9200, name: 'es-ssh-ohne-tls' }));
+        await rejects(m.connect(plain.id), /vor dem SSH-Handshake getrennt/);
+        const proxied = await store.save(
+          input(
+            { ...ssh, tunnel: true, servername: 'ssh-test', verifyServer: true, caFile: cert('ca.crt'), certFile: cert('client-combined.pem') },
+            { host: 'es8', port: 9200, name: 'es-ssh-tls' },
+          ),
+        );
+        assert.match((await m.connect(proxied.id)).version, /^Elasticsearch 8\.10/);
+        const db = (await m.listDatabases(proxied.id))[0];
+        assert.ok((await m.listObjects(proxied.id, db, '')).some((o) => o.name === 'kunden'));
       });
     }
   } finally {
@@ -858,7 +876,13 @@ async function main() {
       skipped++;
       console.log('\nSSH-Container 15022 nicht erreichbar – SSH-Tunnel übersprungen');
     }
-    await viaManager(sshUp);
+    const sshProxyUp = sshUp && (await portOpen(15422));
+    if (sshProxyUp) assertTestContainers([{ name: 'HAProxy vor dem SSH-Container', host: '127.0.0.1', port: 15422 }]);
+    else if (sshUp) {
+      skipped++;
+      console.log('\nHAProxy 15422 nicht erreichbar – SSH im TLS-Tunnel übersprungen');
+    }
+    await viaManager(sshUp, sshProxyUp);
   }
   console.log(failed ? `\n${failed} Fehler` : `\nalles ok${skipped ? ` (${skipped} Teil(e) übersprungen)` : ''}`);
   process.exit(failed ? 1 : 0);

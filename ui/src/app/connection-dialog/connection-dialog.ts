@@ -94,15 +94,27 @@ export class ConnectionDialog {
   protected setDialect(d: Dialect) {
     const f = this.form();
     const port = f.port === DEFAULT_PORT[f.dialect] || !f.port ? DEFAULT_PORT[d] : f.port;
-    // Elasticsearch: HTTPS ersetzt den TLS-Tunnel (sonst blieben dessen Einstellungen unsichtbar wirksam)
+    // Elasticsearch: ohne SSH ersetzt HTTPS den TLS-Tunnel (sonst blieben dessen Einstellungen unsichtbar wirksam); mit SSH
+    // bleibt er – dann läuft SSH durch den TLS-Proxy
     // SQL Server: verschlüsselt (sonst ginge das Passwort im Klartext über das Netz); selbst signierte Zertifikate
     // akzeptiert, wie sie in Firmennetzen üblich sind – abschaltbar
-    const options = d === 'mssql' ? { encrypt: true, trustServerCertificate: true, ...f.options } : d === 'elasticsearch' ? { ...f.options, tunnel: false } : f.options;
+    const options =
+      d === 'mssql'
+        ? { encrypt: true, trustServerCertificate: true, ...f.options }
+        : d === 'elasticsearch'
+          ? { ...f.options, tunnel: !!f.options?.ssh && !!f.options?.tunnel }
+          : f.options;
     this.patch({ dialect: d, port, options });
   }
 
   protected setOption<K extends keyof ConnectionOptions>(k: K, v: ConnectionOptions[K]) {
     this.patch({ options: { ...this.form().options, [k]: v } });
+  }
+
+  /** SSH an/aus; bei Elasticsearch gibt es den TLS-Tunnel nur für SSH (ohne SSH: HTTPS) – mit SSH fällt er weg */
+  protected setSsh(on: boolean) {
+    const o = this.form().options;
+    this.patch({ options: { ...o, ssh: on, ...(this.es() && !on ? { tunnel: false } : {}) } });
   }
 
   /** TLS-Einstellungen anzeigen: Tunnel, MySQL/PostgreSQL mit SSL, SQL Server mit Verschlüsselung */

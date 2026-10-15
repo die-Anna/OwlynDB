@@ -221,7 +221,8 @@ Im Verbindungsdialog: CA als **PEM**; das Client-Zertifikat als PEM (Zertifikat 
 - **SSH-Tunnel** (*Proxy*, wie `ssh -L`): Einrichtung mit Beispiel im Abschnitt [SSH-Tunnel](#ssh-tunnel). Mit *TLS-Tunnel*
   zusammen läuft SSH im TLS-Tunnel zum Proxy, also wie
   `ssh -L 1433:localhost:1433 -o ProxyCommand="openssl s_client -quiet -connect <proxy>:<port> -servername <sni> -cert <pem>" <user>@…`:
-  SSH-Server/Port = Proxy, *SNI-Name* = `-servername`, *Client-Zert.* = `-cert`.
+  SSH-Server/Port = Proxy, *SNI-Name* = `-servername`, *Client-Zert.* = `-cert`. Das geht auch bei Elasticsearch: Dort bietet der
+  Dialog den TLS-Tunnel an, sobald *SSH-Tunnel* angehakt ist (ohne SSH übernimmt *HTTPS* den TLS-Weg).
   Der Hostschlüssel wird beim ersten Kontakt per Rückfrage bestätigt (Fingerabdruck wie bei `ssh`) und in `ssh-host-keys.json`
   im Profil gemerkt; ein geänderter Schlüssel führt zu einer Warnung. Der lokale Tunnel-Port lauscht nur auf `127.0.0.1` und schließt
   beim Trennen. SSH sendet alle 15 s ein Keepalive; reißt SSH trotzdem ab, wird es beim nächsten Zugriff neu aufgebaut
@@ -372,7 +373,8 @@ kann trotzdem verbinden (Name und Version bleiben dann unbekannt); die Indexlist
 die Spalten mit nur `read` kommen aus `_field_caps` (ohne Datumsformat). *HTTPS* hat dieselben Zertifikatsoptionen wie TLS bei
 den anderen Datenbanken (CA, Prüfen, Client-Zertifikat, SNI) – auch für einen Proxy davor, der das Client-Zertifikat prüft; eine
 Umleitung des Proxys (301/302) meldet OwlynDB mit Ziel. Der SSH-Tunnel geht wie gewohnt (Ziel aus Sicht des SSH-Servers, z. B.
-`localhost 9200`).
+`localhost 9200`), auch mit SSH im TLS-Tunnel durch einen Proxy mit SNI und Client-Zertifikat (*TLS-Tunnel mit Client-Zertifikat*
+erscheint neben *SSH-Tunnel*).
 
 - **Baum:** der Cluster als einzige „Datenbank“, darunter Indizes und Data Streams als Tabellen, Aliase als Views (versteckte und
   Systemindizes nicht). Die Zahl neben einem Index zählt die Dokumente wie eine Suche (eine Aggregation nach `_index` über alle

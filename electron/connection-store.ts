@@ -199,8 +199,8 @@ export class ConnectionStore {
       trustServerCertificate: o.trustServerCertificate,
       ssl: o.ssl,
       readOnly: !!o.readOnly,
-      // mit SSH gilt der TLS-Tunnel für den Weg zum SSH-Server, nicht für die Datenbank
-      tunnel: ssh ? false : o.tunnel,
+      // mit SSH gilt der TLS-Tunnel für den Weg zum SSH-Server, nicht für die Datenbank; Elasticsearch kennt ihn nur so
+      tunnel: ssh || c.dialect === 'elasticsearch' ? false : o.tunnel,
       servername: o.servername?.trim() || undefined,
       tls: await readTls(c.dialect, o, passphrase),
       ssh,
@@ -382,7 +382,9 @@ async function readSsh(o: ConnectionOptions, secret: string): Promise<SshSetting
 
 /** Zertifikatsdateien lesen; Fehler mit verständlicher Meldung */
 async function readTls(dialect: ConnectionInput['dialect'], o: ConnectionOptions, passphrase: () => string): Promise<TlsMaterial | undefined> {
-  const usesTls = !!o.tunnel || (dialect === 'mssql' ? !!o.encrypt : !!o.ssl);
+  // Elasticsearch: TLS-Tunnel nur für SSH durch einen TLS-Proxy (ohne SSH: HTTPS)
+  const tunnel = !!o.tunnel && (dialect !== 'elasticsearch' || !!o.ssh);
+  const usesTls = tunnel || (dialect === 'mssql' ? !!o.encrypt : !!o.ssl);
   if (!usesTls) return undefined;
   const read = async (file: string | undefined, what: string) => {
     if (!file?.trim()) return undefined;

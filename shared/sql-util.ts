@@ -27,14 +27,82 @@ export function needsSchema(
   all: readonly { schema: string; name: string }[],
   searchPath?: readonly string[],
 ): boolean {
-  if (!t.schema || dialect === 'mysql' || dialect === 'elasticsearch') return false;
+  return schemaNeeded(dialect, all, searchPath)(t);
+}
+
+/**
+ * needsSchema für viele Tabellen derselben Liste: je Name einmal vorab der früheste Platz im Suchpfad (linear), danach kostet
+ * jede Tabelle nur noch einen Zugriff. Je Tabelle alle anderen zu durchsuchen wäre quadratisch – bei Tausenden Tabellen
+ * (z. B. eine Tabelle je Kampagne) hing der Editor sonst bei jedem Tastendruck.
+ */
+export function schemaNeeded(
+  dialect: Dialect,
+  all: readonly { schema: string; name: string }[],
+  searchPath?: readonly string[],
+): (t: { schema: string; name: string }) => boolean {
+  if (dialect === 'mysql' || dialect === 'elasticsearch') return () => false;
   const path = searchPath ?? (dialect === 'mssql' ? ['dbo'] : ['public']);
   const norm = (s: string) => (dialect === 'mssql' ? s.toLowerCase() : s);
-  const at = (schema: string) => path.findIndex((p) => norm(p) === norm(schema));
-  const mine = at(t.schema);
-  if (mine < 0) return true;
-  // eine gleichnamige Tabelle in einem Schema weiter vorn im Suchpfad verdeckt diese
-  return all.some((o) => o !== t && norm(o.name) === norm(t.name) && at(o.schema) >= 0 && at(o.schema) < mine);
+  const rank = new Map<string, number>();
+  path.forEach((p, i) => {
+    if (!rank.has(norm(p))) rank.set(norm(p), i);
+  });
+  const first = new Map<string, number>();
+  for (const o of all) {
+    const at = rank.get(norm(o.schema));
+    if (at === undefined) continue;
+    const k = norm(o.name);
+    const prev = first.get(k);
+    if (prev === undefined || at < prev) first.set(k, at);
+  }
+  return (t) => {
+    if (!t.schema) return false;
+    const mine = rank.get(norm(t.schema));
+    if (mine === undefined) return true;
+    // eine gleichnamige Tabelle in einem Schema weiter vorn im Suchpfad verdeckt diese
+    const front = first.get(norm(t.name));
+    return front !== undefined && front < mine;
+  };
+}
+
+/** Anführungszeichen für Namen je Dialekt: Öffner und Schließer (SQL Server kennt [ ] und, mit QUOTED_IDENTIFIER, " ") */
+export const IDENT_QUOTES: Record<Dialect, readonly (readonly [string, string])[]> = {
+  mssql: [
+    ['[', ']'],
+    ['"', '"'],
+  ],
+  postgres: [['"', '"']],
+  mysql: [['`', '`']],
+  elasticsearch: [],
+};
+
+/**
+ * Endet der Text in einem angefangenen Namen in Anführungszeichen ([Order De, "Kunden, `log)? Dann Öffner, Schließer und
+ * die Stelle des Öffners (für die Vervollständigung: Namen dort roh einsetzen). Zeichenketten in einfachen Anführungszeichen
+ * zählen nicht; ein verdoppelter Schließer (]], "") gehört zum Namen.
+ */
+export function openIdentQuote(dialect: Dialect, before: string): { open: string; close: string; at: number } | null {
+  let pair: readonly [string, string] | null = null;
+  let at = -1;
+  let inString = false;
+  for (let i = 0; i < before.length; i++) {
+    const ch = before[i];
+    if (pair) {
+      if (ch !== pair[1]) continue;
+      if (before[i + 1] === pair[1]) i++;
+      else pair = null;
+    } else if (inString) {
+      if (ch === "'") inString = false;
+    } else if (ch === "'") inString = true;
+    else {
+      const p = IDENT_QUOTES[dialect].find(([o]) => o === ch);
+      if (p) {
+        pair = p;
+        at = i;
+      }
+    }
+  }
+  return pair ? { open: pair[0], close: pair[1], at } : null;
 }
 
 export function objectName(dialect: Dialect, ref: Pick<ObjectRef, 'schema' | 'name'>): string {

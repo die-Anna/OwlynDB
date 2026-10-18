@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import type * as Monaco from 'monaco-editor';
 import type { CompletionInfo, Dialect } from '../../../../shared/api-types';
 import { isConsoleRequest, splitEs } from '../../../../shared/es-console';
-import { needsSchema, quoteIdent } from '../../../../shared/sql-util';
+import { openIdentQuote, quoteIdent, schemaNeeded } from '../../../../shared/sql-util';
 
 export type MonacoApi = typeof Monaco;
 
@@ -96,6 +96,47 @@ function identText(dialect: Dialect, name: string): string {
 /** Namen mit Zeilenumbruch nicht anbieten (eingesetzt zerrissen sie die Anweisung) */
 const offered = (name: string) => !/[\r\n]/.test(name);
 
+/** Zeichen, die die Vorschläge öffnen, weil mit ihnen ein Name in Anführungszeichen beginnt */
+const QUOTE_TRIGGERS = ['[', '"', '`'];
+
+/** angefangener Name in Anführungszeichen vor dem Cursor, mit der Spalte direkt hinter dem Öffner (Monaco zählt ab 1) */
+function openQuote(dialect: Dialect, before: string): { open: string; close: string; column: number } | null {
+  const q = openIdentQuote(dialect, before);
+  return q && { open: q.open, close: q.close, column: q.at + 1 + q.open.length };
+}
+
+type CompletionTable = CompletionInfo['tables'][number];
+
+/** je geladener Liste einmal vorbereitet – die Vorschläge laufen bei jedem Tastendruck, auch mit Tausenden Tabellen */
+interface CompletionIndex {
+  tables: CompletionTable[];
+  /** Name klein geschrieben → Tabellen dieses Namens (in verschiedenen Schemas) */
+  byName: Map<string, CompletionTable[]>;
+  needsSchema: (t: CompletionTable) => boolean;
+  schemas: string[];
+}
+const EMPTY_INDEX: CompletionIndex = { tables: [], byName: new Map(), needsSchema: () => false, schemas: [] };
+const INDEXES = new WeakMap<CompletionInfo, CompletionIndex>();
+
+function completionIndex(dialect: Dialect, info: CompletionInfo | undefined): CompletionIndex {
+  if (!info) return EMPTY_INDEX;
+  let ix = INDEXES.get(info);
+  if (!ix) {
+    const tables = info.tables.filter((t) => offered(t.name));
+    const byName = new Map<string, CompletionTable[]>();
+    for (const t of tables) {
+      const k = t.name.toLowerCase();
+      const same = byName.get(k);
+      if (same) same.push(t);
+      else byName.set(k, [t]);
+    }
+    const schemas = [...new Set(tables.map((t) => t.schema))].filter((s) => s && offered(s));
+    ix = { tables, byName, needsSchema: schemaNeeded(dialect, info.tables, info.searchPath), schemas };
+    INDEXES.set(info, ix);
+  }
+  return ix;
+}
+
 /** Name in SQL von Elasticsearch: mit - oder anderen Zeichen in Anführungszeichen (Punkte in Feldnamen sind erlaubt) */
 function esIdent(name: string, dots: boolean): string {
   return (dots ? /^[A-Za-z_@][\w.@]*$/ : /^[A-Za-z_][\w]*$/).test(name) ? name : '"' + name.replace(/"/g, '""') + '"';
@@ -169,10 +210,16 @@ export class MonacoLoader {
       m.languages.registerDocumentFormattingEditProvider(lang, { provideDocumentFormattingEdits: (model) => formatEdits(model) });
       m.languages.registerDocumentRangeFormattingEditProvider(lang, { provideDocumentRangeFormattingEdits: (model, range) => formatEdits(model, range) });
       m.languages.registerCompletionItemProvider(lang, {
-        triggerCharacters: lang === 'sql' ? ['.', ' '] : ['.', ' ', '/', '"'],
-        provideCompletionItems: (model, position) => {
+        triggerCharacters: lang === 'sql' ? ['.', ' ', ...QUOTE_TRIGGERS] : ['.', ' ', '/', '"'],
+        provideCompletionItems: (model, position, context) => {
           const src = this.sources.get(model.uri.toString());
           if (!src) return { suggestions: [] };
+          // Anführungszeichen, das hier keinen Namen beginnt (" in MySQL, in einer Zeichenkette, schließend): keine Liste
+          const ch = context.triggerCharacter;
+          if (lang === 'sql' && ch && QUOTE_TRIGGERS.includes(ch)) {
+            const before = model.getLineContent(position.lineNumber).slice(0, position.column - 1);
+            if (openQuote(src.dialect, before)?.open !== ch) return { suggestions: [] };
+          }
           return { suggestions: this.suggest(m, model, position, src) };
         },
       });
@@ -222,15 +269,24 @@ export class MonacoLoader {
       const console = this.suggestEs(m, model, pos, src);
       if (console) return console;
     }
-    // SQL von Elasticsearch: Index- und Feldnamen mit - usw. in Anführungszeichen; sonst je Dialekt gequotet, wo nötig
-    const tableText = (n: string) => (es ? esIdent(n, false) : identText(src.dialect, n));
-    const columnText = (n: string) => (es ? esIdent(n, true) : identText(src.dialect, n));
-    const info = src.info();
+    const ix = completionIndex(src.dialect, src.info());
+    const line = model.getLineContent(pos.lineNumber);
+    // in einem angefangenen Namen in Anführungszeichen ([Order De): ab dem Öffner filtern, Namen roh einsetzen
+    const quote = es ? null : openQuote(src.dialect, line.slice(0, pos.column - 1));
     const word = model.getWordUntilPosition(pos);
-    const range = { startLineNumber: pos.lineNumber, endLineNumber: pos.lineNumber, startColumn: word.startColumn, endColumn: word.endColumn };
-    const lineBefore = model.getLineContent(pos.lineNumber).slice(0, word.startColumn - 1);
+    const startColumn = quote ? quote.column : word.startColumn;
+    const range = { startLineNumber: pos.lineNumber, endLineNumber: pos.lineNumber, startColumn, endColumn: quote ? pos.column : word.endColumn };
+    const lineBefore = line.slice(0, startColumn - 1 - (quote?.open.length ?? 0));
+    // der Schließer fehlt hinter dem Cursor (nicht automatisch ergänzt): mit einsetzen
+    const close = quote && line[pos.column - 1] !== quote.close ? quote.close : '';
+    const raw = (n: string) => (quote ? n.split(quote.close).join(quote.close + quote.close) + close : n);
+    // SQL von Elasticsearch: Index- und Feldnamen mit - usw. in Anführungszeichen; sonst je Dialekt gequotet, wo nötig
+    const tableText = (n: string) => (quote ? raw(n) : es ? esIdent(n, false) : identText(src.dialect, n));
+    const columnText = (n: string) => (quote ? raw(n) : es ? esIdent(n, true) : identText(src.dialect, n));
+    // mit Schema; im Öffner schon begonnen: [spx].[MITARBEITER wird zu „spx].[MITARBEITER“
+    const qualified = (t: CompletionTable) =>
+      quote ? `${t.schema.split(quote.close).join(quote.close + quote.close)}${quote.close}.${quote.open}${raw(t.name)}` : `${identText(src.dialect, t.schema)}.${tableText(t.name)}`;
     const K = m.languages.CompletionItemKind;
-    const tables = (info?.tables ?? []).filter((t) => offered(t.name));
     const text = model.getValue();
 
     // "alias." oder "tabelle." oder "schema."
@@ -238,40 +294,37 @@ export class MonacoLoader {
     if (dot) {
       const qualifier = unquote(dot[1]).toLowerCase();
       const aliases = findAliases(text);
-      const hit = pickTable(tables, aliases.get(qualifier) ?? { schema: '', table: qualifier });
+      const hit = pickTable(ix, aliases.get(qualifier) ?? { schema: '', table: qualifier });
       if (hit) {
         return hit.columns
           .filter(offered)
           .map((c, i) => ({ label: c, kind: K.Field, insertText: columnText(c), range, sortText: String(i).padStart(4, '0'), detail: (hit.schema ? hit.schema + '.' : '') + hit.name }));
       }
-      const inSchema = tables.filter((t) => t.schema.toLowerCase() === qualifier);
+      const inSchema = ix.tables.filter((t) => t.schema.toLowerCase() === qualifier);
       return inSchema.map((t) => ({ label: t.name, kind: t.kind === 'view' ? K.Interface : K.Class, insertText: tableText(t.name), range, detail: t.kind === 'view' ? 'View' : 'Tabelle' }));
     }
 
     const out: Monaco.languages.CompletionItem[] = [];
     // Spalten der Tabellen, die in der Abfrage vorkommen, zuerst – je Verweis die Tabelle im genannten Schema
-    const used = new Set([...findAliases(text).values()].map((r) => pickTable(tables, r)));
-    for (const t of tables) {
-      if (!used.has(t)) continue;
+    const used = new Set([...findAliases(text).values()].map((r) => pickTable(ix, r)));
+    for (const t of used) {
+      if (!t) continue;
       for (const c of t.columns.filter(offered)) out.push({ label: c, kind: K.Field, insertText: columnText(c), range, sortText: '1' + c, detail: t.name });
     }
-    const schemas = new Set<string>();
-    for (const t of tables) {
+    for (const t of ix.tables) {
       out.push({
         label: t.name,
         kind: t.kind === 'view' ? K.Interface : K.Class,
         // mit Schema, wo der Server die Tabelle ohne nicht fände (z. B. spx.MITARBEITER bei Standardschema dbo)
-        insertText: !es && needsSchema(src.dialect, t, info?.tables ?? [], info?.searchPath) ? `${identText(src.dialect, t.schema)}.${tableText(t.name)}` : tableText(t.name),
+        insertText: !es && ix.needsSchema(t) ? qualified(t) : tableText(t.name),
         range,
         sortText: '2' + t.name,
         detail: (t.schema ? t.schema + '.' : '') + (t.kind === 'view' ? 'View' : 'Tabelle'),
       });
-      if (t.schema && offered(t.schema)) schemas.add(t.schema);
     }
-    for (const s of schemas) out.push({ label: s, kind: K.Module, insertText: es ? s : identText(src.dialect, s), range, sortText: '3' + s, detail: 'Schema' });
-    for (const k of [...KEYWORDS, ...DIALECT_KEYWORDS[src.dialect]]) {
-      out.push({ label: k, kind: K.Keyword, insertText: k, range, sortText: '4' + k });
-    }
+    for (const s of ix.schemas) out.push({ label: s, kind: K.Module, insertText: quote ? raw(s) : es ? s : identText(src.dialect, s), range, sortText: '3' + s, detail: 'Schema' });
+    // in Anführungszeichen steht ein Name, kein Schlüsselwort
+    if (!quote) for (const k of [...KEYWORDS, ...DIALECT_KEYWORDS[src.dialect]]) out.push({ label: k, kind: K.Keyword, insertText: k, range, sortText: '4' + k });
     return out;
   }
 }
@@ -286,10 +339,13 @@ interface TableRef {
   table: string;
 }
 
-/** Tabelle zu einem Verweis: im genannten Schema, sonst die erste gleichnamige (gleichnamige Tabellen in dbo und audit) */
-function pickTable<T extends { schema: string; name: string }>(tables: T[], ref: TableRef): T | undefined {
-  const same = tables.filter((t) => t.name.toLowerCase() === ref.table);
-  return (ref.schema ? same.find((t) => t.schema.toLowerCase() === ref.schema) : undefined) ?? same[0];
+/**
+ * Tabelle zu einem Verweis: im genannten Schema, ohne Schema die, die der Server über den Suchpfad findet (gleichnamige
+ * Tabellen in dbo und archiv: die aus dbo), sonst die erste gleichnamige
+ */
+function pickTable(ix: CompletionIndex, ref: TableRef): CompletionTable | undefined {
+  const same = ix.byName.get(ref.table) ?? [];
+  return (ref.schema ? same.find((t) => t.schema.toLowerCase() === ref.schema) : same.find((t) => !ix.needsSchema(t))) ?? same[0];
 }
 
 /** alias -> Tabelle (klein geschrieben, mit Schema) aus FROM/JOIN/UPDATE/INTO */

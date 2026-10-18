@@ -161,6 +161,10 @@ dann nur das AtlasDB-Fenster nach vorn) und danach über „Apps“ deinstallier
   Tabellen voreingestellt), lange Tabellen zeigen zuerst 24 Spalten. Verweise in ein anderes Schema bzw. eine andere Datenbank
   erscheinen als gestrichelter Platzhalter. *Export*: Bild in die Zwischenablage (PNG) oder SVG-Datei.
 - `Strg+W` schließt den Tab, `Strg+Tab` wechselt – nicht, solange ein Dialog, der Wertbetrachter oder ein Menü offen ist.
+- **Tabs ziehen:** in der Leiste an eine andere Stelle (eine Linie zeigt, wohin) – oder in den Inhalt, dann steht der Tab links
+  bzw. rechts **neben** dem aktiven (ebenso über das Kontextmenü des Tabs: *Rechts/Links daneben anzeigen*, *Nebeneinander
+  beenden*). Gearbeitet wird in der Seite, die zuletzt angeklickt wurde (oben blau markiert); ein neuer Tab öffnet sich dort.
+  Den Trenner ziehen ändert die Breite, Doppelklick stellt halb und halb her. Schließen eines der beiden beendet die Teilung.
 - **Export** (Knopf in der Tabellenansicht, Download-Symbol bei Ergebnissen, Rechtsklick → *Exportieren …*): Excel, CSV, JSON, SQL-INSERT.
   In der Tabellenansicht wahlweise alle Zeilen mit aktuellem Filter/Sortierung (wird gestreamt, auch große Tabellen, lässt sich
   abbrechen) oder nur die Seite; bei Abfragen das geladene Ergebnis oder die markierten Zeilen. Ist das Ergebnis abgeschnitten (oder sind

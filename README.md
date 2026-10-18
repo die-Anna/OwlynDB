@@ -20,8 +20,9 @@ ausführen, Daten vergleichen und kopieren – für Windows, macOS und Linux, he
 
 - **SSH-Tunnel eingebaut:** Die Datenbank hinter dem Jump-Host öffnet sich direkt – kein `ssh -L` im Terminal, kein PuTTY
   nebenher. Auch SSH durch einen TLS-Proxy mit SNI und Client-Zertifikat. [Beispiel](#ssh-tunnel)
-- **Editor wie in VS Code** (Monaco): Vorschläge für Tabellen und Spalten, Formatieren, mehrere Ergebnisse, Verlauf und
-  gespeicherte Abfragen. Jeder Abfrage-Tab hat seine eigene Verbindung – Transaktionen bleiben offen, bis du sie beendest.
+- **Editor wie in VS Code** (Monaco): Vorschläge für Tabellen und Spalten, Formatieren, mehrere Ergebnisse, Fehler genau an
+  der Stelle markiert, Verlauf und gespeicherte Abfragen, zwei Tabs nebeneinander. Jeder Abfrage-Tab hat seine eigene
+  Verbindung – Transaktionen bleiben offen, bis du sie beendest.
 - **Ausführungsplan wie in SSMS:** als Baum mit Anteilen, auf Wunsch mit gemessener Laufzeit je Schritt, dazu Hinweise auf
   weit danebenliegende Schätzungen, ganz gelesene Tabellen und fehlende Indizes.
 - **ER-Diagramm** auf Knopfdruck, automatisch angeordnet, als Bild oder SVG.

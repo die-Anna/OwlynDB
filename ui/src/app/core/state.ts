@@ -131,6 +131,10 @@ export class AppState {
   readonly currentDatabase = signal('');
   /** zuletzt im Baum gewählt, seither nicht in einem Tab gearbeitet: „Neue Abfrage“ nimmt dann die Auswahl im Baum */
   readonly treeContext = signal(false);
+  /** zwei Tabs nebeneinander; der aktive ist einer davon (dort wird gearbeitet, ein neuer Tab ersetzt ihn) */
+  readonly split = signal<{ left: string; right: string } | null>(null);
+  /** zuletzt aktive Tabs, der jüngste vorn – für „daneben anzeigen“ ohne zweiten sichtbaren Tab */
+  private recent: string[] = [];
   /** Dialog zum Anlegen/Bearbeiten: null = zu, '' = neu, sonst id */
   readonly editing = signal<string | null>(null);
 
@@ -148,11 +152,51 @@ export class AppState {
         if (Object.keys(st).some((id) => !ids.has(id))) this.status.set(Object.fromEntries(Object.entries(st).filter(([id]) => ids.has(id))));
       });
     });
-    // ein anderer Tab wird aktiv (Klick, Strg+Tab, neuer Tab): „Neue Abfrage“ folgt wieder dem aktiven Tab
+    // ein anderer Tab wird aktiv (Klick, Strg+Tab, neuer Tab): „Neue Abfrage“ folgt wieder dem aktiven Tab; nebeneinander
+    // ersetzt er den Tab der Seite, auf der zuletzt gearbeitet wurde
     effect(() => {
-      this.activeId();
-      untracked(() => this.treeContext.set(false));
+      const id = this.activeId();
+      untracked(() => {
+        this.treeContext.set(false);
+        const sp = this.split();
+        if (sp && id && id !== sp.left && id !== sp.right) this.split.set(this.recent[0] === sp.right ? { ...sp, right: id } : { ...sp, left: id });
+        if (id) this.recent = [id, ...this.recent.filter((x) => x !== id)].slice(0, 20);
+      });
     });
+    // einer der beiden nebeneinander geschlossen: die Teilung endet
+    effect(() => {
+      const ids = new Set(this.tabs().map((t) => t.id));
+      untracked(() => {
+        const sp = this.split();
+        if (sp && (!ids.has(sp.left) || !ids.has(sp.right))) this.split.set(null);
+        this.recent = this.recent.filter((x) => ids.has(x));
+      });
+    });
+  }
+
+  /**
+   * Tab neben einem zweiten zeigen; side = wo er hinkommt. Der zweite: der aktive, ist er es selbst, sein Nachbar in der
+   * Teilung bzw. der zuvor aktive. Danach wird im gezeigten Tab gearbeitet.
+   */
+  showBeside(id: string, side: 'left' | 'right'): void {
+    const ids = this.tabs().map((t) => t.id);
+    if (!ids.includes(id)) return;
+    const sp = this.split();
+    const other = [this.activeId(), sp?.left, sp?.right, ...this.recent, ...ids].find((x) => x && x !== id && ids.includes(x));
+    if (!other) return;
+    this.split.set(side === 'right' ? { left: other, right: id } : { left: id, right: other });
+    this.activeId.set(id);
+  }
+
+  /** Tab in der Leiste verschieben: vor den Tab, der vor dem Verschieben an Stelle `to` stand (`to` = Länge: ans Ende) */
+  moveTab(id: string, to: number): void {
+    const list = [...this.tabs()];
+    const from = list.findIndex((t) => t.id === id);
+    if (from < 0 || to === from || to === from + 1) return;
+    const [t] = list.splice(from, 1);
+    list.splice(to > from ? to - 1 : to, 0, t);
+    this.tabs.set(list);
+    this.saveQueryTabs();
   }
 
   /** Auswahl im Baum: Verbindung und Datenbank des Knotens werden zum Ziel für „Neue Abfrage“ */
@@ -447,7 +491,11 @@ export class AppState {
     this.reportUnsaved();
     this.compareTargets.delete(id);
     this.tabSessions.delete(id);
-    if (this.activeId() === id) this.activeId.set(next[Math.min(i, next.length - 1)]?.id ?? null);
+    // einer von zweien nebeneinander: die Teilung endet, der andere bleibt stehen
+    const sp = this.split();
+    const beside = sp?.left === id ? sp.right : sp?.right === id ? sp.left : null;
+    if (beside) this.split.set(null);
+    if (this.activeId() === id) this.activeId.set(beside ?? next[Math.min(i, next.length - 1)]?.id ?? null);
     this.saveQueryTabs();
   }
 

@@ -145,6 +145,82 @@ main {
   &[hidden] {
     display: none;
   }
+
+  // nebeneinander: die Seite, in der gearbeitet wird
+  &.focused::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 2px;
+    background: var(--accent);
+    z-index: 5;
+    pointer-events: none;
+  }
+}
+
+.splitter {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  z-index: 6;
+  cursor: col-resize;
+  background: var(--border);
+
+  &:hover {
+    background: var(--accent);
+  }
+}
+
+// Tab beim Ziehen über dem Inhalt: dort landet er
+.drop-zone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 50%;
+  z-index: 7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+  font-weight: 600;
+  pointer-events: none;
+
+  &.right {
+    left: 50%;
+  }
+}
+
+.tab {
+  // nebeneinander sichtbar, aber nicht aktiv
+  &.beside {
+    background: var(--bg);
+    color: var(--fg);
+
+    &::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 2px;
+      background: var(--fg-faint);
+    }
+  }
+
+  // Einfügestelle beim Ziehen
+  &.drop-before {
+    box-shadow: inset 2px 0 0 var(--accent);
+  }
+
+  &.drop-after {
+    box-shadow: inset -2px 0 0 var(--accent);
+  }
 }
 
 .welcome {

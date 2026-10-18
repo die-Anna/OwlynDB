@@ -33,6 +33,10 @@ export class App implements OnInit {
   private menu = inject(ContextMenuService);
   protected sidebarWidth = signal(Number(localStorage.getItem('dbv.sidebar')) || 280);
   protected loadError = signal<string | null>(null);
+  /** nebeneinander: Breite der linken Seite in Prozent */
+  protected splitPct = signal(Math.min(80, Math.max(20, Number(localStorage.getItem('dbv.split')) || 50)));
+  /** gezogener Tab: Ablage in der Leiste (vor dem Tab an Stelle index, Länge = ans Ende) oder links/rechts daneben */
+  protected drag = signal<{ index: number | null; zone: 'left' | 'right' | null } | null>(null);
 
   constructor() {
     // aktiver Tab immer im sichtbaren Teil der Leiste: neuer Tab, Strg+Tab, Schließen, Wiederherstellen beim Start
@@ -95,6 +99,8 @@ export class App implements OnInit {
   }
 
   protected tabMenu(ev: MouseEvent, t: Tab) {
+    const sp = this.state.split();
+    const single = this.state.tabs().length < 2;
     this.menu.open(ev, [
       { label: 'Schließen', icon: 'close', hint: keys('Strg+W'), action: () => void this.state.requestClose([t.id]) },
       {
@@ -102,7 +108,100 @@ export class App implements OnInit {
         action: () => void this.state.requestClose(this.state.tabs().filter((x) => x.id !== t.id).map((x) => x.id)),
       },
       { label: 'Alle schließen', action: () => void this.state.requestClose(this.state.tabs().map((x) => x.id)) },
+      { separator: true },
+      { label: 'Rechts daneben anzeigen', icon: 'columns', disabled: single || sp?.right === t.id, action: () => this.state.showBeside(t.id, 'right') },
+      { label: 'Links daneben anzeigen', disabled: single || sp?.left === t.id, action: () => this.state.showBeside(t.id, 'left') },
+      ...(sp ? [{ label: 'Nebeneinander beenden', action: () => this.state.split.set(null) }] : []),
     ]);
+  }
+
+  /** sichtbar: der aktive Tab, nebeneinander beide */
+  protected visible(t: Tab): boolean {
+    const sp = this.state.split();
+    return sp ? t.id === sp.left || t.id === sp.right : t.id === this.state.activeId();
+  }
+
+  protected side(t: Tab): 'left' | 'right' | null {
+    const sp = this.state.split();
+    return !sp ? null : t.id === sp.left ? 'left' : t.id === sp.right ? 'right' : null;
+  }
+
+  /** nebeneinander, aber nicht der aktive: in der Leiste markiert */
+  protected beside(t: Tab): boolean {
+    return this.side(t) !== null && t.id !== this.state.activeId();
+  }
+
+  /** Klick oder Fokus in eine der beiden Seiten: dort wird gearbeitet */
+  protected focusPane(t: Tab) {
+    if (this.side(t) && this.state.activeId() !== t.id) this.state.activeId.set(t.id);
+  }
+
+  /** Trenner zwischen den beiden Seiten ziehen (20–80 %) */
+  protected startSplitResize(ev: MouseEvent) {
+    ev.preventDefault();
+    const box = (ev.currentTarget as HTMLElement).parentElement!.getBoundingClientRect();
+    const move = (e: MouseEvent) => this.splitPct.set(Math.min(80, Math.max(20, ((e.clientX - box.left) / box.width) * 100)));
+    const up = () => {
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', up);
+      localStorage.setItem('dbv.split', String(Math.round(this.splitPct())));
+    };
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+  }
+
+  protected resetSplit() {
+    this.splitPct.set(50);
+    localStorage.setItem('dbv.split', '50');
+  }
+
+  /**
+   * Tab ziehen: in der Leiste an eine andere Stelle, in den Inhalt links bzw. rechts neben den aktiven Tab. Erst ab ein paar
+   * Pixeln Weg – ein Klick bleibt ein Klick (aktiviert den Tab).
+   */
+  protected tabPointerDown(ev: PointerEvent, t: Tab) {
+    if (ev.button !== 0 || (ev.target as HTMLElement).closest('.x')) return;
+    const el = ev.currentTarget as HTMLElement;
+    const x0 = ev.clientX;
+    const y0 = ev.clientY;
+    let moving = false;
+    el.setPointerCapture(ev.pointerId);
+    const move = (e: PointerEvent) => {
+      if (!moving && Math.hypot(e.clientX - x0, e.clientY - y0) < 6) return;
+      moving = true;
+      this.drag.set(this.dropTarget(e.clientX, e.clientY));
+    };
+    const up = () => {
+      el.removeEventListener('pointermove', move);
+      el.removeEventListener('pointerup', up);
+      el.removeEventListener('pointercancel', up);
+      const d = this.drag();
+      this.drag.set(null);
+      if (!moving || !d) return;
+      if (d.zone) this.state.showBeside(t.id, d.zone);
+      else if (d.index !== null) this.state.moveTab(t.id, d.index);
+    };
+    el.addEventListener('pointermove', move);
+    el.addEventListener('pointerup', up);
+    el.addEventListener('pointercancel', up);
+  }
+
+  /** Ablageziel unter dem Zeiger: Stelle in der Leiste (vor der Mitte eines Tabs) oder Hälfte des Inhalts */
+  private dropTarget(x: number, y: number): { index: number | null; zone: 'left' | 'right' | null } {
+    const nav = document.querySelector('nav.tabs')?.getBoundingClientRect();
+    const content = document.querySelector('section.content')?.getBoundingClientRect();
+    if (content && this.state.tabs().length > 1 && x >= content.left && x <= content.right && y >= content.top && y <= content.bottom) {
+      return { index: null, zone: x < content.left + content.width / 2 ? 'left' : 'right' };
+    }
+    if (nav && y >= nav.top - 24 && y <= nav.bottom + 24) {
+      const tabs = [...document.querySelectorAll('nav.tabs .tab')];
+      const i = tabs.findIndex((tab) => {
+        const r = tab.getBoundingClientRect();
+        return x < r.left + r.width / 2;
+      });
+      return { index: i < 0 ? tabs.length : i, zone: null };
+    }
+    return { index: null, zone: null };
   }
 
   /** Tab-Leiste mit der Tastatur: Pfeile bzw. Pos1/Ende wählen (und aktivieren) den Nachbarn, Entf (Mac: ⌫) schließt */

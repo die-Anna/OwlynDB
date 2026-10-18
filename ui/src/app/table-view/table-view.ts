@@ -467,10 +467,11 @@ export class TableView {
     void navigator.clipboard.writeText(text);
   }
 
-  /** F5 wie der Knopf „Neu laden“: nur im sichtbaren Tab und nicht hinter einem Dialog */
+  /** F5 wie der Knopf „Neu laden“: nur im aktiven Tab (nebeneinander: der, in dem gearbeitet wird), nicht hinter einem Dialog */
   @HostListener('window:keydown', ['$event'])
   protected onWindowKey(ev: KeyboardEvent) {
-    if (ev.key !== 'F5' || ev.ctrlKey || ev.altKey || ev.metaKey || ev.shiftKey || ev.defaultPrevented || !this.active() || overlayOpen()) return;
+    if (ev.key !== 'F5' || ev.ctrlKey || ev.altKey || ev.metaKey || ev.shiftKey || ev.defaultPrevented || this.state.activeId() !== this.tab().id || overlayOpen())
+      return;
     ev.preventDefault();
     if (!ev.repeat) this.refreshAll();
   }

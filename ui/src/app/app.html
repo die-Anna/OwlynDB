@@ -15,10 +15,14 @@
           [attr.tabindex]="t.id === state.activeId() ? 0 : -1"
           (keydown)="onTabKey($event, t)"
           [class.on]="t.id === state.activeId()"
+          [class.beside]="beside(t)"
+          [class.drop-before]="drag()?.index === $index"
+          [class.drop-after]="$last && drag()?.index === state.tabs().length"
           [attr.aria-selected]="t.id === state.activeId()"
           [title]="tabTooltip(t)"
           [style.--conn]="tabColor(t)"
           (click)="state.activeId.set(t.id); state.tabContext()"
+          (pointerdown)="tabPointerDown($event, t)"
           (mousedown)="onTabMouseDown($event, t)"
           (contextmenu)="tabMenu($event, t)"
         >
@@ -32,21 +36,33 @@
     </nav>
 
     <!-- Arbeit im Tab (Editor, Ergebnis, Knöpfe): „Neue Abfrage“ folgt wieder dem aktiven Tab statt der Auswahl im Baum -->
-    <section class="content" (focusin)="state.tabContext()" (pointerdown)="state.tabContext()">
+    <!-- nebeneinander: zwei Seiten, gearbeitet wird in der zuletzt angeklickten (oben markiert); [active] heißt „sichtbar“ -->
+    <section class="content" [class.split]="!!state.split()" (focusin)="state.tabContext()" (pointerdown)="state.tabContext()">
       @for (t of state.tabs(); track t.id) {
-        <div class="pane" role="tabpanel" [id]="'pane-' + t.id" [attr.aria-labelledby]="'tab-' + t.id" [hidden]="t.id !== state.activeId()">
+        <div
+          class="pane"
+          role="tabpanel"
+          [id]="'pane-' + t.id"
+          [attr.aria-labelledby]="'tab-' + t.id"
+          [hidden]="!visible(t)"
+          [class.focused]="!!state.split() && t.id === state.activeId()"
+          [style.right]="side(t) === 'left' ? 'calc(' + (100 - splitPct()) + '% + 2px)' : null"
+          [style.left]="side(t) === 'right' ? 'calc(' + splitPct() + '% + 2px)' : null"
+          (pointerdown)="focusPane(t)"
+          (focusin)="focusPane(t)"
+        >
           @if (t.kind === 'table') {
-            <app-table-view [tab]="t" [active]="t.id === state.activeId()" />
+            <app-table-view [tab]="t" [active]="visible(t)" />
           } @else if (t.kind === 'compare') {
             <app-schema-compare [tab]="t" />
           } @else if (t.kind === 'sessions') {
-            <app-sessions-view [tab]="t" [active]="t.id === state.activeId()" />
+            <app-sessions-view [tab]="t" [active]="visible(t)" />
           } @else if (t.kind === 'er') {
-            <app-er-view [tab]="t" [active]="t.id === state.activeId()" />
+            <app-er-view [tab]="t" [active]="visible(t)" />
           } @else if (t.kind === 'datacompare') {
             <app-data-compare [tab]="t" />
           } @else {
-            <app-query-view [tab]="t" [active]="t.id === state.activeId()" />
+            <app-query-view [tab]="t" [active]="visible(t)" />
           }
         </div>
       } @empty {
@@ -67,6 +83,18 @@
             <button type="button" class="btn" (click)="state.editing.set('')"><app-icon name="plus" /> Verbindung anlegen</button>
           </div>
         </div>
+      }
+      @if (state.split()) {
+        <div
+          class="splitter"
+          [style.left]="'calc(' + splitPct() + '% - 2px)'"
+          title="Ziehen: Breite ändern · Doppelklick: halb und halb"
+          (mousedown)="startSplitResize($event)"
+          (dblclick)="resetSplit()"
+        ></div>
+      }
+      @if (drag()?.zone; as zone) {
+        <div class="drop-zone" [class.right]="zone === 'right'">{{ zone === 'right' ? 'Rechts daneben' : 'Links daneben' }}</div>
       }
     </section>
   </main>

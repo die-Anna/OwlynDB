@@ -1,4 +1,5 @@
 import { afterNextRender, afterRenderEffect, ChangeDetectionStrategy, Component, HostListener, inject, Injector, OnInit, signal } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { message } from './core/api';
 import { isMac, keys } from './core/platform';
 import { AppState, Tab, tabConnection } from './core/state';
@@ -21,7 +22,7 @@ import { overlayOpen } from './ui/modal';
 
 @Component({
   selector: 'app-root',
-  imports: [Tree, ConnectionDialog, ExportDialog, DumpDialog, ObjectSearch, ContextMenu, Icon, TableView, QueryView, SchemaCompare, SessionsView, ErView, DataCompare, SettingsDialog, KeysPipe],
+  imports: [Tree, ConnectionDialog, ExportDialog, DumpDialog, ObjectSearch, ContextMenu, Icon, TableView, QueryView, SchemaCompare, SessionsView, ErView, DataCompare, SettingsDialog, KeysPipe, NgTemplateOutlet],
   templateUrl: './app.html',
   styleUrl: './app.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -35,8 +36,8 @@ export class App implements OnInit {
   protected loadError = signal<string | null>(null);
   /** nebeneinander: Breite der linken Seite in Prozent */
   protected splitPct = signal(Math.min(80, Math.max(20, Number(localStorage.getItem('dbv.split')) || 50)));
-  /** gezogener Tab: Ablage in der Leiste (vor dem Tab an Stelle index, Länge = ans Ende) oder links/rechts daneben */
-  protected drag = signal<{ index: number | null; zone: 'left' | 'right' | null } | null>(null);
+  /** gezogener Tab: Ablage in einer Leiste (bar, vor dem Tab an Stelle index, Länge = ans Ende) oder auf eine Seite (zone) */
+  protected drag = signal<{ bar: 'left' | 'right' | null; index: number | null; zone: 'left' | 'right' | null } | null>(null);
 
   constructor() {
     // aktiver Tab immer im sichtbaren Teil der Leiste: neuer Tab, Strg+Tab, Schließen, Wiederherstellen beim Start
@@ -98,8 +99,15 @@ export class App implements OnInit {
     this.state.openQuery(target.connectionId, target.database);
   }
 
+  /** „+“ einer Gruppe: dort arbeiten, dann eine neue Abfrage (sie kommt in diese Gruppe) */
+  protected newQueryIn(side: 'left' | 'right') {
+    this.state.focusGroup(side);
+    this.newQuery();
+  }
+
   protected tabMenu(ev: MouseEvent, t: Tab) {
-    const sp = this.state.split();
+    const split = this.state.isSplit();
+    const g = this.state.groupOf(t.id);
     const single = this.state.tabs().length < 2;
     this.menu.open(ev, [
       { label: 'Schließen', icon: 'close', hint: keys('Strg+W'), action: () => void this.state.requestClose([t.id]) },
@@ -109,31 +117,44 @@ export class App implements OnInit {
       },
       { label: 'Alle schließen', action: () => void this.state.requestClose(this.state.tabs().map((x) => x.id)) },
       { separator: true },
-      { label: 'Rechts daneben anzeigen', icon: 'columns', disabled: single || sp?.right === t.id, action: () => this.state.showBeside(t.id, 'right') },
-      { label: 'Links daneben anzeigen', disabled: single || sp?.left === t.id, action: () => this.state.showBeside(t.id, 'left') },
-      ...(sp ? [{ label: 'Nebeneinander beenden', action: () => this.state.split.set(null) }] : []),
+      ...(split
+        ? [
+            { label: g === 'left' ? 'In die rechte Gruppe verschieben' : 'In die linke Gruppe verschieben', icon: 'columns', action: () => this.state.moveToGroup(t.id, g === 'left' ? 'right' : 'left') },
+            { label: 'Nebeneinander beenden', action: () => this.state.unsplit() },
+          ]
+        : [
+            { label: 'Rechts daneben anzeigen', icon: 'columns', disabled: single, action: () => this.state.moveToGroup(t.id, 'right') },
+            { label: 'Links daneben anzeigen', disabled: single, action: () => this.state.moveToGroup(t.id, 'left') },
+          ]),
     ]);
   }
 
-  /** sichtbar: der aktive Tab, nebeneinander beide */
+  /** sichtbar: der aktive Tab, nebeneinander der sichtbare jeder Gruppe */
   protected visible(t: Tab): boolean {
-    const sp = this.state.split();
-    return sp ? t.id === sp.left || t.id === sp.right : t.id === this.state.activeId();
+    return this.side(t) !== null || (!this.state.isSplit() && t.id === this.state.activeId());
   }
 
   protected side(t: Tab): 'left' | 'right' | null {
-    const sp = this.state.split();
-    return !sp ? null : t.id === sp.left ? 'left' : t.id === sp.right ? 'right' : null;
+    if (!this.state.isSplit()) return null;
+    const a = this.state.groupActive();
+    return t.id === a.left ? 'left' : t.id === a.right ? 'right' : null;
   }
 
-  /** nebeneinander, aber nicht der aktive: in der Leiste markiert */
+  /** sichtbar in der Gruppe, in der gerade nicht gearbeitet wird: in ihrer Leiste gedämpft markiert */
   protected beside(t: Tab): boolean {
     return this.side(t) !== null && t.id !== this.state.activeId();
   }
 
   /** Klick oder Fokus in eine der beiden Seiten: dort wird gearbeitet */
   protected focusPane(t: Tab) {
-    if (this.side(t) && this.state.activeId() !== t.id) this.state.activeId.set(t.id);
+    const side = this.side(t);
+    if (side && this.state.activeId() !== t.id) this.state.focusGroup(side);
+  }
+
+  /** Tab einer Leiste anklicken: in seiner Gruppe sichtbar, dort wird gearbeitet */
+  protected activate(t: Tab) {
+    this.state.show(t.id);
+    this.state.tabContext();
   }
 
   /** Trenner zwischen den beiden Seiten ziehen (20–80 %) */
@@ -156,8 +177,8 @@ export class App implements OnInit {
   }
 
   /**
-   * Tab ziehen: in der Leiste an eine andere Stelle, in den Inhalt links bzw. rechts neben den aktiven Tab. Erst ab ein paar
-   * Pixeln Weg – ein Klick bleibt ein Klick (aktiviert den Tab).
+   * Tab ziehen: in eine der Leisten an eine Stelle (auch in die andere Gruppe), in den Inhalt auf eine Seite (ohne Teilung
+   * entsteht sie). Erst ab ein paar Pixeln Weg – ein Klick bleibt ein Klick (aktiviert den Tab).
    */
   protected tabPointerDown(ev: PointerEvent, t: Tab) {
     if (ev.button !== 0 || (ev.target as HTMLElement).closest('.x')) return;
@@ -178,36 +199,46 @@ export class App implements OnInit {
       const d = this.drag();
       this.drag.set(null);
       if (!moving || !d) return;
-      if (d.zone) this.state.showBeside(t.id, d.zone);
-      else if (d.index !== null) this.state.moveTab(t.id, d.index);
+      if (d.zone) this.state.moveToGroup(t.id, d.zone);
+      else if (d.bar) {
+        const list = d.bar === 'right' ? this.state.rightTabs() : this.state.leftTabs();
+        const before = list[d.index ?? list.length]?.id ?? null;
+        if (before !== t.id) this.state.moveToGroup(t.id, d.bar, before);
+      }
     };
     el.addEventListener('pointermove', move);
     el.addEventListener('pointerup', up);
     el.addEventListener('pointercancel', up);
   }
 
-  /** Ablageziel unter dem Zeiger: Stelle in der Leiste (vor der Mitte eines Tabs) oder Hälfte des Inhalts */
-  private dropTarget(x: number, y: number): { index: number | null; zone: 'left' | 'right' | null } {
-    const nav = document.querySelector('nav.tabs')?.getBoundingClientRect();
-    const content = document.querySelector('section.content')?.getBoundingClientRect();
-    if (content && this.state.tabs().length > 1 && x >= content.left && x <= content.right && y >= content.top && y <= content.bottom) {
-      return { index: null, zone: x < content.left + content.width / 2 ? 'left' : 'right' };
-    }
-    if (nav && y >= nav.top - 24 && y <= nav.bottom + 24) {
-      const tabs = [...document.querySelectorAll('nav.tabs .tab')];
+  /**
+   * Ablageziel unter dem Zeiger: Stelle in einer Leiste (vor der Mitte eines Tabs) oder Seite des Inhalts (nebeneinander
+   * die der Gruppen, sonst die Hälften)
+   */
+  private dropTarget(x: number, y: number): { bar: 'left' | 'right' | null; index: number | null; zone: 'left' | 'right' | null } {
+    for (const bar of ['left', 'right'] as const) {
+      const nav = document.querySelector(`nav.tabs[data-group=${bar}]`);
+      const r = nav?.getBoundingClientRect();
+      if (!r || x < r.left || x > r.right || y < r.top - 24 || y > r.bottom + 24) continue;
+      const tabs = [...nav!.querySelectorAll('.tab')];
       const i = tabs.findIndex((tab) => {
-        const r = tab.getBoundingClientRect();
-        return x < r.left + r.width / 2;
+        const b = tab.getBoundingClientRect();
+        return x < b.left + b.width / 2;
       });
-      return { index: i < 0 ? tabs.length : i, zone: null };
+      return { bar, index: i < 0 ? tabs.length : i, zone: null };
     }
-    return { index: null, zone: null };
+    const c = document.querySelector('section.content')?.getBoundingClientRect();
+    if (c && this.state.tabs().length > 1 && x >= c.left && x <= c.right && y >= c.top && y <= c.bottom) {
+      const edge = c.left + (c.width * (this.state.isSplit() ? this.splitPct() : 50)) / 100;
+      return { bar: null, index: null, zone: x < edge ? 'left' : 'right' };
+    }
+    return { bar: null, index: null, zone: null };
   }
 
-  /** Tab-Leiste mit der Tastatur: Pfeile bzw. Pos1/Ende wählen (und aktivieren) den Nachbarn, Entf (Mac: ⌫) schließt */
+  /** Tab-Leiste mit der Tastatur: Pfeile bzw. Pos1/Ende wählen (und aktivieren) den Nachbarn in der Gruppe, Entf (Mac: ⌫) schließt */
   protected onTabKey(ev: KeyboardEvent, t: Tab) {
     if (ev.ctrlKey || ev.altKey || ev.metaKey) return;
-    const list = this.state.tabs();
+    const list = this.state.groupOf(t.id) === 'right' ? this.state.rightTabs() : this.state.leftTabs();
     const i = list.findIndex((x) => x.id === t.id);
     let next: Tab | undefined;
     if (ev.key === 'ArrowRight') next = list[(i + 1) % list.length];
@@ -221,7 +252,7 @@ export class App implements OnInit {
       return;
     } else return;
     ev.preventDefault();
-    this.state.activeId.set(next.id);
+    this.state.show(next.id);
     afterNextRender(() => document.getElementById('tab-' + next.id)?.focus(), { injector: this.injector });
   }
 
@@ -256,11 +287,12 @@ export class App implements OnInit {
       if (id) void this.state.requestClose([id]);
     } else if (k === 'tab') {
       ev.preventDefault();
-      const list = this.state.tabs();
+      // nebeneinander: durch die Tabs der Gruppe, in der gearbeitet wird
+      const list = this.state.focusedGroup() === 'right' && this.state.isSplit() ? this.state.rightTabs() : this.state.leftTabs();
       if (!list.length) return;
       const i = list.findIndex((x) => x.id === this.state.activeId());
       const n = (i + (ev.shiftKey ? -1 : 1) + list.length) % list.length;
-      this.state.activeId.set(list[n].id);
+      this.state.show(list[n].id);
     }
   }
 

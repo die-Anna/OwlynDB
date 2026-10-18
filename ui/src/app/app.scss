@@ -174,13 +174,11 @@ main {
   }
 }
 
-// Tab beim Ziehen über dem Inhalt: dort landet er
+// Tab beim Ziehen über dem Inhalt: dort landet er (Lage per left/right je nach Seite)
 .drop-zone {
   position: absolute;
   top: 0;
   bottom: 0;
-  left: 0;
-  width: 50%;
   z-index: 7;
   display: flex;
   align-items: center;
@@ -190,9 +188,25 @@ main {
   color: var(--accent);
   font-weight: 600;
   pointer-events: none;
+}
 
-  &.right {
-    left: 50%;
+// Leisten: ohne Teilung eine, nebeneinander je Gruppe eine über ihrer Seite (Lücke über dem Trenner)
+.bars {
+  display: flex;
+  flex: none;
+  background: var(--border);
+
+  .tabs {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &.split .tabs:first-child {
+    flex: none;
+  }
+
+  &.split .tabs + .tabs {
+    margin-left: 4px;
   }
 }
 

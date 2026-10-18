@@ -131,9 +131,25 @@ export class AppState {
   readonly currentDatabase = signal('');
   /** zuletzt im Baum gewählt, seither nicht in einem Tab gearbeitet: „Neue Abfrage“ nimmt dann die Auswahl im Baum */
   readonly treeContext = signal(false);
-  /** zwei Tabs nebeneinander; der aktive ist einer davon (dort wird gearbeitet, ein neuer Tab ersetzt ihn) */
-  readonly split = signal<{ left: string; right: string } | null>(null);
-  /** zuletzt aktive Tabs, der jüngste vorn – für „daneben anzeigen“ ohne zweiten sichtbaren Tab */
+  /**
+   * Nebeneinander: zwei Gruppen mit je eigener Tab-Leiste. Hier stehen die Tabs der rechten Gruppe, alle übrigen gehören zur
+   * linken; leer = keine Teilung. Die Reihenfolge je Gruppe ist die in tabs.
+   */
+  readonly rightIds = signal<ReadonlySet<string>>(new Set());
+  /** sichtbarer Tab je Gruppe */
+  readonly groupActive = signal<{ left: string | null; right: string | null }>({ left: null, right: null });
+  /** Gruppe, in der gearbeitet wird: activeId ist ihr sichtbarer Tab, neue Tabs kommen dorthin */
+  readonly focusedGroup = signal<'left' | 'right'>('left');
+  readonly isSplit = computed(() => this.rightIds().size > 0);
+  readonly leftTabs = computed(() => {
+    const r = this.rightIds();
+    return this.tabs().filter((t) => !r.has(t.id));
+  });
+  readonly rightTabs = computed(() => {
+    const r = this.rightIds();
+    return this.tabs().filter((t) => r.has(t.id));
+  });
+  /** zuletzt aktive Tabs, der jüngste vorn – für den sichtbaren Tab einer Gruppe, die ihren verliert */
   private recent: string[] = [];
   /** Dialog zum Anlegen/Bearbeiten: null = zu, '' = neu, sonst id */
   readonly editing = signal<string | null>(null);
@@ -152,51 +168,106 @@ export class AppState {
         if (Object.keys(st).some((id) => !ids.has(id))) this.status.set(Object.fromEntries(Object.entries(st).filter(([id]) => ids.has(id))));
       });
     });
-    // ein anderer Tab wird aktiv (Klick, Strg+Tab, neuer Tab): „Neue Abfrage“ folgt wieder dem aktiven Tab; nebeneinander
-    // ersetzt er den Tab der Seite, auf der zuletzt gearbeitet wurde
+    // ein anderer Tab wird aktiv (Klick, Strg+Tab, neuer Tab): „Neue Abfrage“ folgt wieder dem aktiven Tab; seine Gruppe
+    // ist die, in der gearbeitet wird, und zeigt ihn
     effect(() => {
       const id = this.activeId();
       untracked(() => {
         this.treeContext.set(false);
-        const sp = this.split();
-        if (sp && id && id !== sp.left && id !== sp.right) this.split.set(this.recent[0] === sp.right ? { ...sp, right: id } : { ...sp, left: id });
-        if (id) this.recent = [id, ...this.recent.filter((x) => x !== id)].slice(0, 20);
-      });
-    });
-    // einer der beiden nebeneinander geschlossen: die Teilung endet
-    effect(() => {
-      const ids = new Set(this.tabs().map((t) => t.id));
-      untracked(() => {
-        const sp = this.split();
-        if (sp && (!ids.has(sp.left) || !ids.has(sp.right))) this.split.set(null);
-        this.recent = this.recent.filter((x) => ids.has(x));
+        if (!id) return;
+        const g = this.groupOf(id);
+        if (this.focusedGroup() !== g) this.focusedGroup.set(g);
+        if (this.groupActive()[g] !== id) this.groupActive.update((a) => ({ ...a, [g]: id }));
+        this.recent = [id, ...this.recent.filter((x) => x !== id)].slice(0, 20);
       });
     });
   }
 
-  /**
-   * Tab neben einem zweiten zeigen; side = wo er hinkommt. Der zweite: der aktive, ist er es selbst, sein Nachbar in der
-   * Teilung bzw. der zuvor aktive. Danach wird im gezeigten Tab gearbeitet.
-   */
-  showBeside(id: string, side: 'left' | 'right'): void {
-    const ids = this.tabs().map((t) => t.id);
-    if (!ids.includes(id)) return;
-    const sp = this.split();
-    const other = [this.activeId(), sp?.left, sp?.right, ...this.recent, ...ids].find((x) => x && x !== id && ids.includes(x));
-    if (!other) return;
-    this.split.set(side === 'right' ? { left: other, right: id } : { left: id, right: other });
+  groupOf(id: string): 'left' | 'right' {
+    return this.rightIds().has(id) ? 'right' : 'left';
+  }
+
+  /** Tab zeigen und dort arbeiten (Klick in einer Leiste, Tastatur): in seiner Gruppe sichtbar, diese hat den Fokus */
+  show(id: string): void {
+    const g = this.groupOf(id);
+    this.focusedGroup.set(g);
+    if (this.groupActive()[g] !== id) this.groupActive.update((a) => ({ ...a, [g]: id }));
     this.activeId.set(id);
   }
 
-  /** Tab in der Leiste verschieben: vor den Tab, der vor dem Verschieben an Stelle `to` stand (`to` = Länge: ans Ende) */
-  moveTab(id: string, to: number): void {
-    const list = [...this.tabs()];
-    const from = list.findIndex((t) => t.id === id);
-    if (from < 0 || to === from || to === from + 1) return;
-    const [t] = list.splice(from, 1);
-    list.splice(to > from ? to - 1 : to, 0, t);
-    this.tabs.set(list);
+  /** in einer Gruppe arbeiten (Klick in ihre Seite, ihr „+“): ihr sichtbarer Tab wird aktiv */
+  focusGroup(side: 'left' | 'right'): void {
+    const id = this.isSplit() ? this.groupActive()[side] : this.activeId();
+    this.focusedGroup.set(this.isSplit() ? side : 'left');
+    if (id && this.activeId() !== id) this.activeId.set(id);
+  }
+
+  /**
+   * Tab in eine Gruppe verschieben, vor beforeId bzw. ans Ende der Gruppe; ohne Teilung entsteht sie (rechts: der Tab allein
+   * rechts; links: der Tab allein links, die übrigen rechts). Er wird dort sichtbar und aktiv. Auch zum Umsortieren in der
+   * eigenen Gruppe.
+   */
+  moveToGroup(id: string, side: 'left' | 'right', beforeId: string | null = null): void {
+    const list = this.tabs();
+    const tab = list.find((t) => t.id === id);
+    if (!tab) return;
+    let r = new Set(this.rightIds());
+    if (!r.size && side === 'right') r = new Set([id]);
+    else if (!r.size) r = new Set(list.filter((t) => t.id !== id).map((t) => t.id));
+    else if (side === 'right') r.add(id);
+    else r.delete(id);
+    // in der Leiste vor beforeId, sonst hinter den letzten Tab der Zielgruppe (neue Gruppe: rechts ans Ende, links an den Anfang)
+    const rest = list.filter((t) => t.id !== id);
+    let at = beforeId ? rest.findIndex((t) => t.id === beforeId) : -1;
+    if (at < 0) {
+      const last = rest.map((t) => (side === 'right') === r.has(t.id)).lastIndexOf(true);
+      at = last >= 0 ? last + 1 : side === 'right' ? rest.length : 0;
+    }
+    rest.splice(at, 0, tab);
+    this.tabs.set(rest);
+    this.rightIds.set(r);
+    this.focusedGroup.set(side);
+    this.groupActive.update((a) => ({ ...a, [side]: id }));
+    this.fixGroups();
     this.saveQueryTabs();
+  }
+
+  /** wieder eine Gruppe: der Tab, in dem gearbeitet wurde, bleibt sichtbar */
+  unsplit(): void {
+    const id = this.activeId();
+    this.joinGroups(this.rightIds());
+    this.rightIds.set(new Set());
+    this.groupActive.set({ left: id, right: null });
+    this.fixGroups();
+    this.saveQueryTabs();
+  }
+
+  /** Teilung endet: in der einen Leiste erst die Tabs der linken, dann die der rechten Gruppe – so, wie sie zu sehen waren */
+  private joinGroups(right: ReadonlySet<string>): void {
+    const list = this.tabs();
+    this.tabs.set([...list.filter((t) => !right.has(t.id)), ...list.filter((t) => right.has(t.id))]);
+  }
+
+  /**
+   * nach Änderungen an Tabs oder Gruppen: eine leere Gruppe beendet die Teilung, jede Gruppe zeigt einen ihrer Tabs (den
+   * bisherigen, sonst den zuletzt aktiven), activeId ist der sichtbare Tab der Gruppe, in der gearbeitet wird
+   */
+  private fixGroups(): void {
+    const ids = this.tabs().map((t) => t.id);
+    const old = this.rightIds();
+    let r = new Set([...old].filter((x) => ids.includes(x)));
+    if (r.size === ids.length) r = new Set();
+    if (old.size && !r.size) this.joinGroups(old);
+    if (r.size !== old.size || [...r].some((x) => !old.has(x))) this.rightIds.set(r);
+    this.recent = this.recent.filter((x) => ids.includes(x));
+    const pick = (inGroup: (x: string) => boolean, cur: string | null) =>
+      cur && ids.includes(cur) && inGroup(cur) ? cur : (this.recent.find(inGroup) ?? ids.find(inGroup) ?? null);
+    const left = pick((x) => !r.has(x), this.groupActive().left);
+    const right = r.size ? pick((x) => r.has(x), this.groupActive().right) : null;
+    this.groupActive.set({ left, right });
+    if (!r.size) this.focusedGroup.set('left');
+    const want = this.focusedGroup() === 'right' && right ? right : left;
+    if (this.activeId() !== want) this.activeId.set(want);
   }
 
   /** Auswahl im Baum: Verbindung und Datenbank des Knotens werden zum Ziel für „Neue Abfrage“ */
@@ -468,14 +539,16 @@ export class AppState {
     return tab;
   }
 
-  /** neben dem aktiven Tab einfügen */
+  /** neben dem aktiven Tab einfügen – nebeneinander in dessen Gruppe */
   private insertTab(tab: Tab) {
+    const active = this.activeId();
     this.tabs.update((list) => {
-      const i = list.findIndex((t) => t.id === this.activeId());
+      const i = list.findIndex((t) => t.id === active);
       const copy = [...list];
       copy.splice(i < 0 ? copy.length : i + 1, 0, tab);
       return copy;
     });
+    if (active && this.groupOf(active) === 'right') this.rightIds.update((s) => new Set(s).add(tab.id));
     this.activeId.set(tab.id);
     this.saveQueryTabs();
   }
@@ -491,11 +564,13 @@ export class AppState {
     this.reportUnsaved();
     this.compareTargets.delete(id);
     this.tabSessions.delete(id);
-    // einer von zweien nebeneinander: die Teilung endet, der andere bleibt stehen
-    const sp = this.split();
-    const beside = sp?.left === id ? sp.right : sp?.right === id ? sp.left : null;
-    if (beside) this.split.set(null);
-    if (this.activeId() === id) this.activeId.set(beside ?? next[Math.min(i, next.length - 1)]?.id ?? null);
+    // sichtbar wird der Nachbar in derselben Gruppe (in ihrer Leiste); eine leere Gruppe beendet die Teilung
+    const g = this.groupOf(id);
+    const mine = list.filter((t) => this.groupOf(t.id) === g);
+    const at = mine.findIndex((t) => t.id === id);
+    const rest = mine.filter((t) => t.id !== id);
+    if (this.groupActive()[g] === id || this.activeId() === id) this.groupActive.update((a) => ({ ...a, [g]: rest[Math.min(at, rest.length - 1)]?.id ?? null }));
+    this.fixGroups();
     this.saveQueryTabs();
   }
 

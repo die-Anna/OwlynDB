@@ -255,6 +255,15 @@ async function testDialect(dialect: Dialect) {
     assert.ok(r.statements[1].error);
     assert.equal(r.results.length, 1);
   });
+  await step('Sitzung: Fehlerstelle für den Editor – der Name, nicht die ganze Anweisung (nie im Kommentar)', async () => {
+    const tbl = dialect === 'mssql' ? 'dbo.kunden' : dialect === 'mysql' ? 'kunden' : 'public.kunden';
+    const sql = `SELECT id,\n  gibt_es_nicht AS a -- gibt_es_nicht\nFROM ${tbl}\nORDER BY gibt_es_nicht`;
+    const r = await s.run([{ sql, offset: 0 }], 10);
+    const marks = (r.statements[0].errorRanges ?? []).map(([a, b]) => `${sql.slice(a, b)}@${sql.slice(0, a).split('\n').length}`).sort();
+    // SQL Server meldet jede Stelle mit Zeile (über die vorangestellte Prüfzeile hinweg), MySQL nur den Namen (alle
+    // Stellen), PostgreSQL die genaue Position (die erste)
+    assert.deepEqual(marks, dialect === 'postgres' ? ['gibt_es_nicht@2'] : ['gibt_es_nicht@2', 'gibt_es_nicht@4']);
+  });
   await step('Sitzung: Prozedur mit mehreren Ergebnissen und Meldungen', async () => {
     const call =
       dialect === 'mysql' ? "CALL kunden_von('Bern')" : dialect === 'mssql' ? "EXEC dbo.kunden_von N'Bern'" : "SELECT public.kunden_anzahl('Bern') AS n";

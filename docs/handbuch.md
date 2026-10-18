@@ -110,7 +110,9 @@ dann nur das AtlasDB-Fenster nach vorn) und danach über „Apps“ deinstallier
   gelöschte durchgestrichen; solange etwas offen ist, sind Blättern, Sortieren und Filtern gesperrt. *Speichern* zeigt zuerst die Anweisungen.
   Ungespeicherte Änderungen: Schließen des Tabs, Beenden und *Neu laden* (Menü *Ansicht*, `Strg+Umschalt+R`) fragen vorher nach.
 - **Abfrage** (`Strg+T`): `F5` / `Strg+Umschalt+Enter` führt alles bzw. die Markierung aus, `Strg+Enter` die Anweisung unter dem Cursor.
-  Mehrere Ergebnisse erscheinen als eigene Reiter, Fehler werden im Editor markiert. MySQL versteht `DELIMITER`, SQL Server `GO`.
+  Mehrere Ergebnisse erscheinen als eigene Reiter. Fehler markiert der Editor an der Stelle, die der Server meldet (Position bei
+  PostgreSQL, Zeile und Name bei SQL Server und MySQL, z. B. nur die unbekannte Spalte); ohne solche Angabe die ganze Anweisung.
+  MySQL versteht `DELIMITER`, SQL Server `GO`.
   SQL Server: `datetime2`, `time` und `datetimeoffset` erscheinen mit allen Nachkommastellen (`datetimeoffset` als UTC mit `+00:00`),
   `real` in kurzer Schreibweise; `decimal`/`numeric` über 15 Stellen liefert der Treiber in freien Abfragen gerundet (Hinweis in den
   Meldungen) – die Tabellenansicht, der Export einer Tabelle, Dump und Kopie lesen sie exakt. `FOR JSON`/`FOR XML` kommt als ein

@@ -194,6 +194,19 @@ function formatType(t: string, maxLength: number, precision: number, scale: numb
   }
 }
 
+/**
+ * Für die Markierung im Editor: jede Meldung des Batches mit ihrer Zeile im eigenen Text – ohne die vorangestellte
+ * Prüfzeile; aus einer Prozedur heraus zählt die Zeile dort, nicht im Text (dann ohne Zeile). Hängt am geworfenen Fehler.
+ */
+function noteErrorLines(last: unknown, errors: unknown[], prefixLines: number): void {
+  if (!last || typeof last !== 'object') return;
+  (last as { statementErrors?: { message: string; line?: number }[] }).statementErrors = errors.map((e) => {
+    const x = e as { message?: string; lineNumber?: number; procName?: string };
+    const line = typeof x.lineNumber === 'number' && x.lineNumber > prefixLines && !x.procName ? x.lineNumber - prefixLines : undefined;
+    return { message: String(x.message ?? ''), line };
+  });
+}
+
 function poolConfig(cfg: DriverConfig, database: string | undefined, max: number, requestTimeout: number): sql.config {
   return {
     server: cfg.host,
@@ -1180,6 +1193,7 @@ class MssqlSession extends BaseSession {
             this.broken = true;
             return reject(new Error(LOST_TEXT));
           }
+          noteErrorLines(last, errors, batch === text ? 0 : 1);
           reject(last);
         });
         // batch() statt query(): kein sp_executesql, damit CREATE PROCEDURE & Co. funktionieren

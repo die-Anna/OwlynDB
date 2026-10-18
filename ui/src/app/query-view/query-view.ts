@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, HostListener, inject, input, signal, untracked, viewChild } from '@angular/core';
 import type * as Monaco from 'monaco-editor';
-import type { Cell, CompletionInfo, QueryPlan, QueryRun } from '../../../../shared/api-types';
+import type { Cell, CompletionInfo, QueryPlan, QueryRun, StatementOutcome } from '../../../../shared/api-types';
 import { isConsoleRequest } from '../../../../shared/es-console';
 import { executeWarnings, pickStatements, type Picked } from '../../../../shared/query-pick';
 import { rerunBlocker } from '../../../../shared/sql-guard';
@@ -377,8 +377,7 @@ export class QueryView {
         this.state.setQueryText(this.tab().id, this.editor?.getValue() ?? text, r.currentDatabase);
         void this.loadCompletion();
       }
-      const err = r.statements.find((s) => s.error);
-      if (err) this.markError(input[err.statementIndex].offset, err.sql, err.error!);
+      this.markErrors(r.statements.filter((s) => s.error && input[s.statementIndex]).map((s) => ({ offset: input[s.statementIndex].offset, st: s })));
       // DDL im Skript: Autovervollständigung auffrischen
       if (r.statements.some((s) => /^\s*(create|alter|drop)\b/i.test(s.sql))) void this.loadCompletion();
     } catch (e) {
@@ -469,14 +468,19 @@ export class QueryView {
     setTimeout(() => this.decorations?.clear(), 600);
   }
 
-  private markError(offset: number, sql: string, msg: string) {
+  /** Fehler im Editor markieren: die Stellen laut Server (Name, Zeile, Position), ohne solche die ganze Anweisung */
+  private markErrors(errors: { offset: number; st: StatementOutcome }[]) {
     const model = this.editor?.getModel();
-    if (!model || !this.monaco) return;
-    const s = model.getPositionAt(offset);
-    const e = model.getPositionAt(offset + sql.length);
-    this.monaco.editor.setModelMarkers(model, 'run', [
-      { severity: this.monaco.MarkerSeverity.Error, message: msg, startLineNumber: s.lineNumber, startColumn: s.column, endLineNumber: e.lineNumber, endColumn: e.column },
-    ]);
+    const m = this.monaco;
+    if (!model || !m || !errors.length) return;
+    const markers = errors.flatMap(({ offset, st }) =>
+      (st.errorRanges?.length ? st.errorRanges : [[0, st.sql.length] as [number, number]]).map(([a, b]) => {
+        const s = model.getPositionAt(offset + a);
+        const e = model.getPositionAt(offset + b);
+        return { severity: m.MarkerSeverity.Error, message: st.error!, startLineNumber: s.lineNumber, startColumn: s.column, endLineNumber: e.lineNumber, endColumn: e.column };
+      }),
+    );
+    m.editor.setModelMarkers(model, 'run', markers);
   }
 
   private clearMarkers() {

@@ -22,6 +22,7 @@ import type {
   TableInfo,
   Dialect,
 } from '../../shared/api-types';
+import { errorRanges, type ErrorRange } from '../../shared/error-location';
 import { readOnlyViolation } from '../../shared/sql-guard';
 import { checkWhere } from '../../shared/sql-util';
 import type { ExportCell } from '../export';
@@ -661,12 +662,15 @@ export abstract class BaseSession implements Session {
             rowsAffected: r.rowsAffected,
           });
         } catch (e) {
+          const error = this.cancelRequested ? 'Abgebrochen.' : errorText(e);
+          const ranges = this.cancelRequested ? [] : locateError(this.dialect, st.sql, e, error);
           outcomes.push({
             statementIndex: idx,
             sql: st.sql,
             durationMs: Math.round(performance.now() - s0),
             resultSets: 0,
-            error: this.cancelRequested ? 'Abgebrochen.' : errorText(e),
+            error,
+            ...(ranges.length ? { errorRanges: ranges } : {}),
           });
           if (!keepGoing || this.broken) break;
         }
@@ -747,6 +751,23 @@ export abstract class BaseSession implements Session {
       this.destroyConnection();
     }
   }
+}
+
+/**
+ * Stellen des Fehlers in der Anweisung für die Markierung im Editor: aus der Position (PostgreSQL) bzw. aus jeder Meldung
+ * samt Zeile, die der Treiber mitgibt (SQL Server: alle Fehler des Batches, statementErrors), sonst aus dem Text
+ */
+function locateError(dialect: Dialect, sql: string, e: unknown, text: string): ErrorRange[] {
+  const x = (e ?? {}) as { position?: string | number; statementErrors?: { message: string; line?: number }[] };
+  const position = Number(x.position) || undefined;
+  const list = x.statementErrors?.length ? x.statementErrors : [{ message: text }];
+  const out: ErrorRange[] = [];
+  for (const one of list) {
+    for (const r of errorRanges(dialect, sql, one.message, { position, line: one.line })) {
+      if (!out.some((o) => o[0] === r[0] && o[1] === r[1])) out.push(r);
+    }
+  }
+  return out;
 }
 
 export function errorText(e: unknown): string {

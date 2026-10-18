@@ -754,6 +754,8 @@ export interface StatementOutcome {
   resultSets: number;
   rowsAffected?: number;
   error?: string;
+  /** Stellen des Fehlers in sql (Anfang, Ende exklusiv) für die Markierung im Editor; fehlt = ganze Anweisung */
+  errorRanges?: [number, number][];
 }
 
 export interface QueryRun {

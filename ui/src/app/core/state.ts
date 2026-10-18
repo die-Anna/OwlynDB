@@ -125,8 +125,12 @@ export class AppState {
   readonly tabs = signal<Tab[]>([]);
   readonly activeId = signal<string | null>(null);
   readonly active = computed(() => this.tabs().find((t) => t.id === this.activeId()) ?? null);
-  /** Verbindung, die im Baum zuletzt angeklickt wurde (für "Neue Abfrage") */
+  /** Verbindung, die im Baum zuletzt gewählt wurde (für „Neue Abfrage“ und die Objektsuche) */
   readonly currentConnection = signal<string | null>(null);
+  /** Datenbank des dort gewählten Knotens; '' bei der Verbindung selbst (dann gilt ihre Standard-Datenbank) */
+  readonly currentDatabase = signal('');
+  /** zuletzt im Baum gewählt, seither nicht in einem Tab gearbeitet: „Neue Abfrage“ nimmt dann die Auswahl im Baum */
+  readonly treeContext = signal(false);
   /** Dialog zum Anlegen/Bearbeiten: null = zu, '' = neu, sonst id */
   readonly editing = signal<string | null>(null);
 
@@ -136,11 +140,45 @@ export class AppState {
       const ids = new Set(this.connections().map((c) => c.id));
       untracked(() => {
         const cur = this.currentConnection();
-        if (cur && !ids.has(cur)) this.currentConnection.set(null);
+        if (cur && !ids.has(cur)) {
+          this.currentConnection.set(null);
+          this.currentDatabase.set('');
+        }
         const st = this.status();
         if (Object.keys(st).some((id) => !ids.has(id))) this.status.set(Object.fromEntries(Object.entries(st).filter(([id]) => ids.has(id))));
       });
     });
+    // ein anderer Tab wird aktiv (Klick, Strg+Tab, neuer Tab): „Neue Abfrage“ folgt wieder dem aktiven Tab
+    effect(() => {
+      this.activeId();
+      untracked(() => this.treeContext.set(false));
+    });
+  }
+
+  /** Auswahl im Baum: Verbindung und Datenbank des Knotens werden zum Ziel für „Neue Abfrage“ */
+  pickInTree(connectionId: string, database: string): void {
+    this.currentConnection.set(connectionId);
+    this.currentDatabase.set(database);
+    this.treeContext.set(true);
+  }
+
+  /** Arbeit in einem Tab (Tab angeklickt, Editor oder Ergebnis): „Neue Abfrage“ folgt wieder dem aktiven Tab */
+  tabContext(): void {
+    this.treeContext.set(false);
+  }
+
+  /**
+   * Ziel für „Neue Abfrage“ (+, Strg+T) und die Objektsuche: die Auswahl im Baum, wenn dort zuletzt gewählt wurde oder kein
+   * Tab offen ist, sonst Verbindung und Datenbank des aktiven Tabs; ohne beides die erste Verbindung
+   */
+  contextTarget(): { connectionId: string; database?: string } | null {
+    const active = this.active();
+    const picked = this.currentConnection();
+    if (picked && (!active || this.treeContext()))
+      return { connectionId: picked, database: this.currentDatabase() || this.connection(picked)?.database || undefined };
+    if (active) return { connectionId: tabConnection(active), database: tabDatabase(active) || undefined };
+    const first = this.connections()[0];
+    return first ? { connectionId: first.id, database: first.database || undefined } : null;
   }
 
   private queryCounter = 0;

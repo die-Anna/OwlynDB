@@ -18,7 +18,7 @@
           [attr.aria-selected]="t.id === state.activeId()"
           [title]="tabTooltip(t)"
           [style.--conn]="tabColor(t)"
-          (click)="state.activeId.set(t.id)"
+          (click)="state.activeId.set(t.id); state.tabContext()"
           (mousedown)="onTabMouseDown($event, t)"
           (contextmenu)="tabMenu($event, t)"
         >
@@ -31,7 +31,8 @@
       <button type="button" class="btn icon add" [title]="'Neue Abfrage (Strg+T)' | keys" (click)="newQuery()"><app-icon name="plus" /></button>
     </nav>
 
-    <section class="content">
+    <!-- Arbeit im Tab (Editor, Ergebnis, Knöpfe): „Neue Abfrage“ folgt wieder dem aktiven Tab statt der Auswahl im Baum -->
+    <section class="content" (focusin)="state.tabContext()" (pointerdown)="state.tabContext()">
       @for (t of state.tabs(); track t.id) {
         <div class="pane" role="tabpanel" [id]="'pane-' + t.id" [attr.aria-labelledby]="'tab-' + t.id" [hidden]="t.id !== state.activeId()">
           @if (t.kind === 'table') {

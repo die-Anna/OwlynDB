@@ -1,7 +1,7 @@
 import { afterNextRender, afterRenderEffect, ChangeDetectionStrategy, Component, HostListener, inject, Injector, OnInit, signal } from '@angular/core';
 import { message } from './core/api';
 import { isMac, keys } from './core/platform';
-import { AppState, Tab, tabConnection, tabDatabase } from './core/state';
+import { AppState, Tab, tabConnection } from './core/state';
 import { ConnectionDialog } from './connection-dialog/connection-dialog';
 import { ExportDialog } from './export-dialog/export-dialog';
 import { DumpDialog } from './dump-dialog/dump-dialog';
@@ -84,16 +84,14 @@ export class App implements OnInit {
     return this.state.connection(tabConnection(t))?.color || 'transparent';
   }
 
+  /** Neue Abfrage (+, Strg+T): auf der Auswahl im Baum, wenn dort zuletzt gewählt wurde, sonst wie der aktive Tab */
   protected newQuery() {
-    const active = this.state.active();
-    const id =
-      (active && tabConnection(active)) ?? this.state.currentConnection() ?? this.state.connections()[0]?.id;
-    if (!id) {
+    const target = this.state.contextTarget();
+    if (!target) {
       this.state.editing.set('');
       return;
     }
-    const db = active ? tabDatabase(active) : this.state.connection(id)?.database;
-    this.state.openQuery(id, db || undefined);
+    this.state.openQuery(target.connectionId, target.database);
   }
 
   protected tabMenu(ev: MouseEvent, t: Tab) {
@@ -143,10 +141,9 @@ export class App implements OnInit {
     if (overlayOpen()) return;
     const k = ev.key.toLowerCase();
     if (k === 'f' && ev.shiftKey) {
-      // Objektsuche in der Verbindung des aktiven Tabs bzw. der im Baum gewählten
+      // Objektsuche in derselben Verbindung wie eine neue Abfrage: im Baum gewählt bzw. die des aktiven Tabs
       ev.preventDefault();
-      const active = this.state.active();
-      const id = (active && tabConnection(active)) ?? this.state.currentConnection() ?? this.state.connections()[0]?.id;
+      const id = this.state.contextTarget()?.connectionId;
       if (id) this.search.open(id);
     } else if (k === 't') {
       ev.preventDefault();

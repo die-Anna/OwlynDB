@@ -156,7 +156,7 @@ export class Tree {
     if (n.expanded() && (n.children() || n.loading())) {
       // die Auswahl lag darunter: sie geht auf den zugeklappten Knoten (sonst wäre kein Knoten per Tab erreichbar)
       const sel = this.selectedKey();
-      if (sel && sel !== n.key && this.contains(n, sel)) this.selectedKey.set(n.key);
+      if (sel && sel !== n.key && this.contains(n, sel)) this.select(n);
       n.expanded.set(false);
       return;
     }
@@ -260,9 +260,14 @@ export class Tree {
     return `CALL ${name}(${n.routine?.args ? '/* ' + n.routine.args.replace(/\*\//g, '* /') + ' */' : ''});`;
   }
 
-  protected click(n: Node) {
+  /** Knoten wählen: Markierung im Baum, und „Neue Abfrage“ nimmt seine Verbindung und Datenbank */
+  protected select(n: Node) {
     this.selectedKey.set(n.key);
-    this.state.currentConnection.set(n.connectionId);
+    this.state.pickInTree(n.connectionId, n.database);
+  }
+
+  protected click(n: Node) {
+    this.select(n);
     if (n.kind === 'object') this.openData(n);
     else if (n.kind === 'routine') void this.openRoutine(n);
     else void this.toggle(n);
@@ -302,8 +307,7 @@ export class Tree {
   }
 
   protected contextMenu(ev: MouseEvent, n: Node) {
-    this.selectedKey.set(n.key);
-    this.state.currentConnection.set(n.connectionId);
+    this.select(n);
     const id = n.connectionId;
     const dialect = this.state.dialect(id);
     // Elasticsearch: nur lesen – kein Dump, Vergleich, ER-Diagramm, keine Sitzungsliste
@@ -488,8 +492,8 @@ export class Tree {
       const copy = await api.duplicateConnection(n.connectionId);
       this.state.connections.set(await api.listConnections());
       const root = this.rootNodes().find((r) => r.connectionId === copy.id);
-      if (root) this.selectedKey.set(root.key);
-      this.state.currentConnection.set(copy.id);
+      if (root) this.select(root);
+      else this.state.pickInTree(copy.id, '');
       this.state.editing.set(copy.id);
     } catch (e) {
       n.error.set(message(e));

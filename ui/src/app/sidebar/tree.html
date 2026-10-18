@@ -31,7 +31,7 @@
     [attr.aria-selected]="selectedKey() === n.key"
     [attr.tabindex]="tabStop(n) ? 0 : -1"
     (keydown)="onKey($event, n)"
-    (focus)="selectedKey.set(n.key)"
+    (focus)="select(n)"
     [class.selected]="selectedKey() === n.key"
     [class.system]="n.system"
     [style.padding-left.px]="6 + depth * 14"

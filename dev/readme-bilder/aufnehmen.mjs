@@ -54,11 +54,11 @@ GROUP BY a.name
 ORDER BY umsatz DESC
 LIMIT 10;
 `;
-// Prod mit roter Farbe und „Nur lesen“, Test grün; die übrigen stehen nur im Baum und werden nie geöffnet
+// Prod mit roter Farbe, Kürzel und „Nur lesen“, Test grün; die übrigen stehen nur im Baum und werden nie geöffnet
 const demo = { dialect: 'postgres', host: PG.host, port: PG.port, user: 'postgres', password: PG.password };
 const VERBINDUNGEN = [
-  { ...demo, name: 'Webshop Prod', database: 'webshop', color: '#d64545', options: { readOnly: true } },
-  { ...demo, name: 'Webshop Test', database: 'webshop_test', color: '#3aa57a', options: {} },
+  { ...demo, name: 'Webshop Prod', short: 'PRD', database: 'webshop', color: '#d64545', options: { readOnly: true } },
+  { ...demo, name: 'Webshop Test', short: 'TST', database: 'webshop_test', color: '#3aa57a', options: {} },
   { name: 'Buchhaltung', dialect: 'mssql', host: '127.0.0.1', port: 1433, user: 'sa', options: { encrypt: true } },
   { name: 'Wiki', dialect: 'mysql', host: '127.0.0.1', port: 3306, user: 'root', options: {} },
   { name: 'Logs', dialect: 'elasticsearch', host: '127.0.0.1', port: 9200, user: '', options: {} },

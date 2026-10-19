@@ -187,6 +187,21 @@ textarea {
   font-family: var(--mono);
 }
 
+/* Kürzel einer Verbindung (Tabs, Vorschau im Verbindungsdialog): Hintergrund in ihrer Farbe, ohne Farbe neutral */
+.conn-badge {
+  display: inline-block;
+  flex: none;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: var(--bg-hover);
+  color: var(--fg);
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 16px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
 /* AG Grid: NULL und Zahlen */
 .ag-cell.is-null {
   color: var(--null);

@@ -19,6 +19,9 @@ export const DEFAULT_PORT: Record<Dialect, number> = {
   elasticsearch: 9200,
 };
 
+/** Kürzel einer Verbindung für die Tabs: höchstens so viele Zeichen */
+export const SHORT_MAX = 8;
+
 export interface ConnectionOptions {
   /** Sicherheitsmodus: Abfrage-Tabs führen nur lesende Anweisungen aus, jede Ausführung wird zurückgerollt */
   readOnly?: boolean;
@@ -72,6 +75,8 @@ export interface SavedConnection {
   options?: ConnectionOptions;
   /** Farbmarkierung, z. B. rot für Produktion */
   color?: string;
+  /** Kürzel (z. B. GP, höchstens SHORT_MAX Zeichen), steht vorn in den Tabs dieser Verbindung – in ihrer Farbe */
+  short?: string;
   hasPassword: boolean;
   /** Passwort für den Client-Schlüssel ist gespeichert */
   hasKeyPassphrase?: boolean;

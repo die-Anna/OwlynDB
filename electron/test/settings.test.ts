@@ -43,7 +43,7 @@ const certFile = path.join(root, 'client.pem');
 writeFileSync(certFile, '-----BEGIN CERTIFICATE-----\nAAAA\n-----END CERTIFICATE-----\n');
 const missingCa = path.join(root, 'gibt-es-nicht', 'ca.pem');
 
-const PROD: ConnectionInput = { name: 'Prod MySQL', dialect: 'mysql', host: 'prod.example', port: 3306, user: 'app', password: 'pw-prod-123', color: '#e5484d', options: { readOnly: true } };
+const PROD: ConnectionInput = { name: 'Prod MySQL', dialect: 'mysql', host: 'prod.example', port: 3306, user: 'app', password: 'pw-prod-123', color: '#e5484d', short: 'PRD', options: { readOnly: true } };
 const DM: ConnectionInput = {
   name: 'DM SQL Server',
   dialect: 'mssql',
@@ -135,6 +135,7 @@ async function main() {
     assert.ok(raw.includes('"passwordEnc": "B:') && !raw.includes('pw-prod-123'), 'auf B mit Bs Verschlüsselung gespeichert');
     assert.equal(list.find((c) => c.id === dm.id)?.options?.sshHost, 'proxy.example');
     assert.equal(list.find((c) => c.id === prod.id)?.color, '#e5484d');
+    assert.equal(list.find((c) => c.id === prod.id)?.short, 'PRD');
     const hist = await b.m.listHistory({});
     assert.deepEqual(hist.map((h) => h.sql).reverse(), ['SELECT 1', "SELECT * FROM kunde WHERE email = 'x@y.ch'", 'SELECT now()']);
     assert.deepEqual((await b.m.listSavedQueries()).map((q) => q.name), ['Kunden zählen', 'Offene Rechnungen']);
@@ -164,10 +165,10 @@ async function main() {
 
   await step('gleicher Name bzw. gleicher Server erkannt; neu anlegen trotz gleichem Namen → „Name (2)“', async () => {
     const c = profile('C');
-    const other = await c.store.save({ ...PROD, host: 'woanders.example', color: undefined });
+    const other = await c.store.save({ ...PROD, host: 'woanders.example', color: undefined, short: undefined });
     const same = await c.store.save({ ...LOCAL, name: 'Mein Postgres' });
     const p = await c.m.previewSettings(a.saveAs);
-    assert.deepEqual(p.connections[0].match, { id: other.id, name: 'Prod MySQL', by: 'name', differences: ['Server', 'Farbe'] });
+    assert.deepEqual(p.connections[0].match, { id: other.id, name: 'Prod MySQL', by: 'name', differences: ['Server', 'Farbe', 'Kürzel'] });
     assert.deepEqual(p.connections[2].match, { id: same.id, name: 'Mein Postgres', by: 'server', differences: ['Name'] });
     const r = await c.m.importSettings({ file: a.saveAs, connections: [{ index: 0, action: 'new' }], savedQueries: false, history: false });
     assert.equal(r.created, 1);

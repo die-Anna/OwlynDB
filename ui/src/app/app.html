@@ -44,6 +44,9 @@
         (contextmenu)="tabMenu($event, t)"
       >
         <span class="ic" [class.q]="t.kind === 'query'"><app-icon [name]="t.kind === 'table' ? (t.ref.kind === 'view' ? 'view' : 'table') : t.kind === 'compare' ? 'compare' : t.kind === 'sessions' ? 'activity' : t.kind === 'er' ? 'diagram' : t.kind === 'datacompare' ? 'datacompare' : 'query'" [size]="13" /></span>
+        @if (badge(t); as b) {
+          <span class="conn-badge" [style.background]="b.bg" [style.color]="b.ink">{{ b.text }}</span>
+        }
         <span class="label">{{ tabTitle(t) }}</span>
         <!-- Tastatur: Entf auf dem Tab (der Knopf steht nicht in der Tab-Reihenfolge) -->
         <button type="button" class="x" tabindex="-1" [title]="'Schließen (Strg+W, Entf)' | keys" aria-label="Tab schließen" (click)="$event.stopPropagation(); state.requestClose([t.id])"><app-icon name="close" [size]="12" /></button>

@@ -2,7 +2,8 @@ import { afterNextRender, afterRenderEffect, ChangeDetectionStrategy, Component,
 import { NgTemplateOutlet } from '@angular/common';
 import { message } from './core/api';
 import { isMac, keys } from './core/platform';
-import { AppState, Tab, tabConnection } from './core/state';
+import { AppState, QueryTab, Tab, tabConnection } from './core/state';
+import { badgeInk } from './ui/conn-badge';
 import { ConnectionDialog } from './connection-dialog/connection-dialog';
 import { ExportDialog } from './export-dialog/export-dialog';
 import { DumpDialog } from './dump-dialog/dump-dialog';
@@ -63,8 +64,19 @@ export class App implements OnInit {
     }
   }
 
+  /** Datenbank eines Abfrage-Tabs: die gewählte, sonst die Standard-Datenbank der Verbindung */
+  private queryDb(t: QueryTab): string {
+    return t.database || this.state.connection(t.connectionId)?.database || '';
+  }
+
   protected tabTitle(t: Tab): string {
-    if (t.kind === 'query') return `Abfrage ${t.number}`;
+    if (t.kind === 'query') {
+      // nach der Datenbank benannt; dieselbe in mehreren Abfrage-Tabs der Verbindung: mit der Nummer unterschieden
+      const db = this.queryDb(t);
+      if (!db) return `Abfrage ${t.number}`;
+      const twins = this.state.tabs().filter((x) => x.kind === 'query' && x.connectionId === t.connectionId && this.queryDb(x) === db).length;
+      return twins > 1 ? `${db} · ${t.number}` : db;
+    }
     if (t.kind === 'compare') return `Vergleich ${t.number}`;
     if (t.kind === 'sessions') return 'Sitzungen';
     if (t.kind === 'er') return `ER · ${t.focus ?? (t.schema && t.schema !== 'dbo' && t.schema !== 'public' ? t.schema : t.database)}`;
@@ -82,11 +94,20 @@ export class App implements OnInit {
     if (t.kind === 'er') return `ER-Diagramm · ${c} · ${t.database}${t.schema ? '.' + t.schema : ''}${t.focus ? '\nab ' + t.focus : ''}`;
     if (t.kind === 'datacompare') return `Datenvergleich · geöffnet ab ${c} · ${[t.source.database, t.source.schema, t.source.table].filter(Boolean).join('.')}`;
     if (t.kind === 'table') return `${c} · ${t.ref.database}${t.ref.schema ? '.' + t.ref.schema : ''}.${t.ref.name}${t.where ? '\nWHERE ' + t.where : ''}`;
-    return `${c}${t.database ? ' · ' + t.database : ''}`;
+    const db = this.queryDb(t);
+    return `Abfrage ${t.number} · ${c}${db ? ' · ' + db : ''}`;
   }
 
   protected tabColor(t: Tab): string {
     return this.state.connection(tabConnection(t))?.color || 'transparent';
+  }
+
+  /** Kürzel der Verbindung vorn im Tab, in ihrer Farbe (ohne Farbe neutral); null = keins */
+  protected badge(t: Tab): { text: string; bg: string | null; ink: string | null } | null {
+    const c = this.state.connection(tabConnection(t));
+    const text = c?.short?.trim();
+    if (!c || !text) return null;
+    return { text, bg: c.color || null, ink: c.color ? badgeInk(c.color) : null };
   }
 
   /** Neue Abfrage (+, Strg+T): auf der Auswahl im Baum, wenn dort zuletzt gewählt wurde, sonst wie der aktive Tab */

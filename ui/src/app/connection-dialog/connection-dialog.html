@@ -225,6 +225,15 @@
           }
           <span class="dim hint">z. B. rot für Produktion</span>
         </div>
+
+        <label for="cd-short">Kürzel</label>
+        <div class="colors">
+          <input id="cd-short" type="text" name="short" class="short" [attr.maxlength]="shortMax" [ngModel]="form().short ?? ''" (ngModelChange)="patch({ short: $event })" placeholder="z. B. GP" />
+          @if (form().short?.trim(); as s) {
+            <span class="conn-badge" [style.background]="form().color || null" [style.color]="form().color ? ink(form().color!) : null">{{ s }}</span>
+          }
+          <span class="dim hint">steht vorn in den Tabs dieser Verbindung</span>
+        </div>
       </div>
 
       @if (result(); as r) {

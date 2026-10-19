@@ -223,6 +223,18 @@ test('Server, Benutzer und Datenbank ohne Leerzeichen am Rand (F227)', async () 
   assert.deepEqual([cfg.host, cfg.user, cfg.database], ['alt.example.com', 'admin', 'shop']);
 });
 
+test('Kürzel für die Tabs: ohne Rand, höchstens 8 Zeichen, leer = keins; bleibt beim Duplizieren', async () => {
+  const file = path.join(await dir(), 'connections.json');
+  const s = new ConnectionStore(file, box);
+  const c = await s.save(conn({ short: '  GP  ' }));
+  assert.equal(c.short, 'GP');
+  assert.equal((await s.save(conn({ id: c.id, short: 'ZuLangesKuerzel' }))).short, 'ZuLanges');
+  assert.equal((await s.duplicate(c.id)).short, 'ZuLanges');
+  const cleared = await s.save(conn({ id: c.id, short: '   ' }));
+  assert.equal(cleared.short, undefined);
+  assert.ok(!('short' in JSON.parse(await fs.readFile(file, 'utf8'))[0]), 'leeres Kürzel nicht gespeichert');
+});
+
 test('Duplizieren: alle Einstellungen und die verschlüsselten Geheimnisse übernommen, neue ID, Name mit (Kopie), Reihenfolge hinter dem Original, zweite Kopie (Kopie 2); unbekannte ID: Fehler', async () => {
   const file = path.join(await dir(), 'connections.json');
   const s = new ConnectionStore(file, box);

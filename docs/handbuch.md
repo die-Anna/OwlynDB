@@ -161,6 +161,9 @@ dann nur das AtlasDB-Fenster nach vorn) und danach über „Apps“ deinstallier
   Tabellen voreingestellt), lange Tabellen zeigen zuerst 24 Spalten. Verweise in ein anderes Schema bzw. eine andere Datenbank
   erscheinen als gestrichelter Platzhalter. *Export*: Bild in die Zwischenablage (PNG) oder SVG-Datei.
 - `Strg+W` schließt den Tab, `Strg+Tab` wechselt – nicht, solange ein Dialog, der Wertbetrachter oder ein Menü offen ist.
+- **Tabs beschriftet:** Abfrage-Tabs heißen nach ihrer Datenbank (stehen mehrere auf derselben, mit Nummer: *shop · 3*), der
+  Tooltip nennt Abfrage, Verbindung und Datenbank. Vorn steht das **Kürzel** der Verbindung in ihrer Farbe – einzutragen im
+  Verbindungsdialog (bis 8 Zeichen, z. B. *GP*); ohne Kürzel nur die Farbe als Strich über dem Tab.
 - **Tabs ziehen:** in der Leiste an eine andere Stelle (eine Linie zeigt, wohin) – oder in den Inhalt: Dann entstehen **zwei
   Gruppen nebeneinander**, jede mit eigener Leiste und eigenem „+“ (ebenso über das Kontextmenü des Tabs: *Rechts/Links
   daneben anzeigen*). Tabs lassen sich zwischen den Leisten ziehen oder per Kontextmenü in die andere Gruppe verschieben.

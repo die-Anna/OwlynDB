@@ -1,8 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { DEFAULT_PORT, DIALECT_LABEL, type ConnectionInput, type ConnectionOptions, type Dialect } from '../../../../shared/api-types';
+import { DEFAULT_PORT, DIALECT_LABEL, SHORT_MAX, type ConnectionInput, type ConnectionOptions, type Dialect } from '../../../../shared/api-types';
 import { api, message } from '../core/api';
 import { AppState } from '../core/state';
+import { badgeInk } from '../ui/conn-badge';
 import { Icon } from '../ui/icon';
 import { Modal } from '../ui/modal';
 
@@ -24,6 +25,8 @@ export class ConnectionDialog {
   protected readonly dialects = Object.entries(DIALECT_LABEL) as [Dialect, string][];
   protected readonly colors = COLORS;
   protected readonly defaultPort = DEFAULT_PORT;
+  protected readonly shortMax = SHORT_MAX;
+  protected readonly ink = badgeInk;
 
   protected form = signal<ConnectionInput>(blank());
   /** beim Bearbeiten: Passwort nur ändern, wenn das Feld angefasst wurde */

@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { createPrivateKey, X509Certificate } from 'node:crypto';
 import forge from 'node-forge';
-import type { ConnectionInput, ConnectionOptions, SavedConnection } from '../shared/api-types';
+import { SHORT_MAX, type ConnectionInput, type ConnectionOptions, type SavedConnection } from '../shared/api-types';
 import type { DriverConfig } from './drivers';
 import type { SshSettings, TlsMaterial } from './drivers/common';
 
@@ -117,6 +117,8 @@ export class ConnectionStore {
     rest.host = rest.host.trim();
     rest.user = rest.user.trim();
     if (rest.database !== undefined) rest.database = rest.database.trim();
+    // Kürzel für die Tabs: kurz und ohne Rand, leer = keins
+    if (rest.short !== undefined) rest.short = rest.short.trim().slice(0, SHORT_MAX) || undefined;
     if (!rest.host) throw new Error('Bitte einen Server angeben.');
     const stored: StoredConnection = {
       ...rest,

@@ -17,6 +17,7 @@ import type {
   SettingsImportResult,
   SettingsPreview,
 } from '../shared/api-types';
+import { SHORT_MAX } from '../shared/api-types';
 import type { ConnectionStore } from './connection-store';
 import type { QueryHistory, SavedQueries } from './history';
 
@@ -153,6 +154,7 @@ function cleanConnection(raw: unknown): ExportedConnection | null {
     database: optText(r.database),
     options: cleanOptions(r.options),
     color: optText(r.color),
+    short: optText(r.short)?.slice(0, SHORT_MAX),
   };
 }
 
@@ -233,6 +235,7 @@ function differences(a: ExportedConnection, b: SavedConnection): string[] {
   if (a.user !== b.user) d.push('Benutzer');
   if ((a.database ?? '') !== (b.database ?? '')) d.push('Datenbank');
   if ((a.color ?? '') !== (b.color ?? '')) d.push('Farbe');
+  if ((a.short ?? '') !== (b.short ?? '')) d.push('Kürzel');
   if (optionsKey(a.options) !== optionsKey(b.options)) d.push('Optionen');
   return d;
 }
@@ -265,7 +268,7 @@ async function missingFiles(o: ConnectionOptions | undefined): Promise<string[]>
   return out;
 }
 
-const fields = (c: ExportedConnection) => ({ name: c.name, dialect: c.dialect, host: c.host, port: c.port, user: c.user, database: c.database, options: c.options, color: c.color });
+const fields = (c: ExportedConnection) => ({ name: c.name, dialect: c.dialect, host: c.host, port: c.port, user: c.user, database: c.database, options: c.options, color: c.color, short: c.short });
 
 // ---------- Export, Vorschau, Import ----------
 

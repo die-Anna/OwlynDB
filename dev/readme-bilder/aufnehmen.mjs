@@ -86,6 +86,8 @@ if (await fetch(`http://127.0.0.1:${CDP_PORT}/json/version`).then(() => true, ()
 let send;
 let ev;
 let closeWs = () => undefined;
+// gesetzt, sobald die Verbindung zur App weg ist (abgestürzt, beendet): Dann scheitert jeder Aufruf sofort statt nach 30 s
+let lost = null;
 async function connect() {
   let page;
   for (let i = 0; i < 160 && !page; i++) {
@@ -113,8 +115,14 @@ async function connect() {
       msg.error ? reject(new Error(msg.error.message)) : resolve(msg.result);
     }
   };
+  ws.onclose = () => {
+    lost = 'Verbindung zur App getrennt (abgestürzt oder beendet?)';
+    for (const { reject } of pending.values()) reject(new Error(lost));
+    pending.clear();
+  };
   send = (method, params = {}) =>
     new Promise((resolve, reject) => {
+      if (lost) return reject(new Error(lost));
       const i = ++id;
       const timer = setTimeout(() => {
         pending.delete(i);
@@ -134,10 +142,13 @@ async function connect() {
   closeWs = () => ws.close();
 }
 async function until(expr, ms = 20_000) {
-  for (let t = 0; t < ms; t += 150) {
+  // nach der Uhr, nicht nach Durchläufen: Ein hängender Aufruf dauert bis zu 30 s
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
     try {
       if (await ev(expr)) return;
-    } catch {
+    } catch (e) {
+      if (lost) throw e;
       // Seite lädt gerade neu
     }
     await sleep(150);
@@ -322,19 +333,30 @@ try {
     }
   }
 } finally {
+  // Aufräumen darf nie selbst werfen: Ein Fehler hier verdeckte den eigentlichen Fehler des Laufs und ließ den Container stehen
   closeWs();
   // nur diesen Prozessbaum beenden, nie nach Programmnamen (ein laufendes OwlynDB bleibt unberührt)
   if (app && app.exitCode === null) {
-    if (process.platform === 'win32') execFileSync('taskkill', ['/PID', String(app.pid), '/T', '/F'], { stdio: 'ignore' });
-    else app.kill();
+    const exited = new Promise((r) => app.once('exit', r));
+    try {
+      if (process.platform === 'win32') execFileSync('taskkill', ['/PID', String(app.pid), '/T', '/F'], { stdio: 'ignore' });
+      else app.kill();
+    } catch {
+      // eben von selbst beendet
+    }
+    await Promise.race([exited, sleep(10_000)]);
   }
-  await sleep(800);
-  rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 300 });
   if (!keep) {
     try {
       docker('rm', '-f', CONTAINER);
     } catch {
       // kein Docker oder Container nie angelegt – der eigentliche Fehler steht darüber
     }
+  }
+  // Dateien im Profil sind teils noch gesperrt (verwaiste Kindprozesse nach einem Absturz, Virenscanner) – dann nur warnen
+  try {
+    rmSync(profile, { recursive: true, force: true, maxRetries: 10, retryDelay: 300 });
+  } catch (e) {
+    console.warn(`Profil nicht gelöscht (${e.code ?? e.message}), bitte selbst löschen: ${profile}`);
   }
 }

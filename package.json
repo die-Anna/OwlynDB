@@ -1,7 +1,7 @@
 {
   "name": "owlyndb",
   "productName": "OwlynDB",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "OwlynDB – Datenbank-Client für MySQL/MariaDB, PostgreSQL, SQL Server und Elasticsearch. One Tool to Bind Them.",
   "private": true,
   "author": "die-Anna",

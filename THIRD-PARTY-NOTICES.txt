@@ -1,7 +1,7 @@
 OwlynDB – Hinweise zu Drittanbieter-Software
 ============================================
 
-Erzeugt am 15.10.2026. Diese Datei ist generiert und wird nicht von Hand gepflegt:
+Erzeugt am 28.10.2026. Diese Datei ist generiert und wird nicht von Hand gepflegt:
 Neu erzeugen mit `npm run notices` (Skript dev/third-party-notices.mjs).
 
 OwlynDB selbst steht unter der MIT-Lizenz (Datei LICENSE): Copyright (c) 2026 die-Anna
@@ -7725,7 +7725,7 @@ SOFTWARE.
 5. Electron und Chromium
 ========================
 
-OwlynDB läuft auf Electron 44.5.1 (https://www.electronjs.org, MIT-Lizenz). Electron enthält Chromium, Node.js, V8 und weitere Komponenten Dritter, jeweils unter eigenen Lizenzen.
+OwlynDB läuft auf Electron 44.10.0 (https://www.electronjs.org, MIT-Lizenz). Electron enthält Chromium, Node.js, V8 und weitere Komponenten Dritter, jeweils unter eigenen Lizenzen.
 
 Der Installer legt die zugehörigen Lizenzdateien neben das Programm:
   LICENSE.electron.txt     Lizenz von Electron

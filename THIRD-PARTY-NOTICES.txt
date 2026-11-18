@@ -1,7 +1,7 @@
 OwlynDB – Hinweise zu Drittanbieter-Software
 ============================================
 
-Erzeugt am 28.10.2026. Diese Datei ist generiert und wird nicht von Hand gepflegt:
+Erzeugt am 18.11.2026. Diese Datei ist generiert und wird nicht von Hand gepflegt:
 Neu erzeugen mit `npm run notices` (Skript dev/third-party-notices.mjs).
 
 OwlynDB selbst steht unter der MIT-Lizenz (Datei LICENSE): Copyright (c) 2026 die-Anna
@@ -161,7 +161,7 @@ Paketliste:
   mysql2                        3.24.5    MIT
   named-placeholders            1.1.6     MIT
   native-duplexpair             1.0.0     MIT
-  node-forge                    1.4.0     (BSD-3-Clause OR GPL-2.0) -> gewählt: BSD-3-Clause
+  node-forge                    1.4.3     (BSD-3-Clause OR GPL-2.0) -> gewählt: BSD-3-Clause
   normalize-path                3.0.0     MIT
   once                          1.4.0     ISC
   open                          10.2.0    MIT
@@ -4721,7 +4721,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
-node-forge 1.4.0
+node-forge 1.4.3
 Lizenz:  (BSD-3-Clause OR GPL-2.0) -> gewählt: BSD-3-Clause
 Autor:   Digital Bazaar, Inc.
 Quelle:  https://github.com/digitalbazaar/forge

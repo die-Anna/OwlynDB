@@ -76,7 +76,7 @@
     "exceljs": "^4.4.0",
     "mssql": "^12.7.4",
     "mysql2": "^3.24.5",
-    "node-forge": "^1.4.0",
+    "node-forge": "^1.4.3",
     "pg": "^8.23.1",
     "pg-copy-streams": "^7.0.0",
     "pg-cursor": "^2.22.1",

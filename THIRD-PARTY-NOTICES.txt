@@ -7763,7 +7763,7 @@ SOFTWARE.
 5. Electron und Chromium
 ========================
 
-OwlynDB läuft auf Electron 44.10.0 (https://www.electronjs.org, MIT-Lizenz). Electron enthält Chromium, Node.js, V8 und weitere Komponenten Dritter, jeweils unter eigenen Lizenzen.
+OwlynDB läuft auf Electron 44.11.4 (https://www.electronjs.org, MIT-Lizenz). Electron enthält Chromium, Node.js, V8 und weitere Komponenten Dritter, jeweils unter eigenen Lizenzen.
 
 Der Installer legt die zugehörigen Lizenzdateien neben das Programm:
   LICENSE.electron.txt     Lizenz von Electron

@@ -8,7 +8,7 @@ OwlynDB selbst steht unter der MIT-Lizenz (Datei LICENSE): Copyright (c) 2026 di
 OwlynDB enthält und verwendet die unten genannte Software Dritter. Deren Lizenzen verlangen, dass die Urheberrechts- und Lizenzhinweise mitgeliefert werden; das geschieht mit dieser Datei.
 
 Inhalt
-  1. Hauptanwendung (Electron-Prozess): 180 Node-Pakete
+  1. Hauptanwendung (Electron-Prozess): 182 Node-Pakete
   2. Oberfläche (UI-Bundle): 11 Bibliotheken
   3. Monaco Editor (SQL-Editor) mit DOMPurify und Codicons
   4. Symbole: Lucide und Feather
@@ -19,10 +19,10 @@ Inhalt
 1. Hauptanwendung (Electron-Prozess): Node-Pakete
 =================================================
 
-Diese 180 Pakete (mit allen Unterabhängigkeiten, ohne Entwicklungswerkzeuge) werden mit der Anwendung ausgeliefert. Gleiche Versionen sind nur einmal aufgeführt. Quelle: package-lock.json und node_modules.
+Diese 182 Pakete (mit allen Unterabhängigkeiten, ohne Entwicklungswerkzeuge) werden mit der Anwendung ausgeliefert. Gleiche Versionen sind nur einmal aufgeführt. Quelle: package-lock.json und node_modules.
 
 Lizenzen im Überblick (bei Doppellizenzen zählt die gewählte):
-  MIT                           149
+  MIT                           151
   ISC                            16
   BSD-3-Clause                    6
   Apache-2.0                      4
@@ -46,14 +46,14 @@ Paketliste:
   @azure/core-rest-pipeline     1.25.0    MIT
   @azure/core-tracing           1.4.0     MIT
   @azure/core-util              1.14.0    MIT
-  @azure/identity               4.13.3    MIT
+  @azure/identity               4.14.1    MIT
   @azure/keyvault-common        2.1.0     MIT
   @azure/keyvault-keys          4.10.2    MIT
   @azure/logger                 1.4.0     MIT
   @azure/msal-browser           5.24.0    MIT
-  @azure/msal-common            16.14.1   MIT
   @azure/msal-common            16.14.2   MIT
-  @azure/msal-node              6.0.1     MIT
+  @azure/msal-common            16.16.2   MIT
+  @azure/msal-node              7.2.2     MIT
   @fast-csv/format              4.3.5     MIT
   @fast-csv/parse               4.3.6     MIT
   @js-joda/core                 6.2.0     BSD-3-Clause
@@ -120,6 +120,7 @@ Paketliste:
   inflight                      1.0.6     ISC
   inherits                      2.0.4     ISC
   is-docker                     3.0.0     MIT
+  is-in-ssh                     1.0.0     MIT
   is-inside-container           1.0.0     MIT
   is-property                   1.0.2     MIT
   is-wsl                        3.1.1     MIT
@@ -164,7 +165,7 @@ Paketliste:
   node-forge                    1.4.3     (BSD-3-Clause OR GPL-2.0) -> gewählt: BSD-3-Clause
   normalize-path                3.0.0     MIT
   once                          1.4.0     ISC
-  open                          10.2.0    MIT
+  open                          11.0.4    MIT
   pako                          1.0.11    (MIT AND Zlib) -> gewählt: MIT AND Zlib
   path-is-absolute              1.0.1     MIT
   pg                            8.23.1    MIT
@@ -181,6 +182,7 @@ Paketliste:
   postgres-bytea                1.0.1     MIT
   postgres-date                 1.0.7     MIT
   postgres-interval             1.2.0     MIT
+  powershell-utils              0.2.1     MIT
   process                       0.11.10   MIT
   process-nextick-args          2.0.1     MIT
   readable-stream               2.3.8     MIT
@@ -212,7 +214,7 @@ Paketliste:
   util-deprecate                1.0.2     MIT
   uuid                          11.1.1    MIT
   wrappy                        1.0.2     ISC
-  wsl-utils                     0.1.0     MIT
+  wsl-utils                     1.0.1     MIT
   xmlchars                      2.2.0     MIT
   xtend                         4.0.2     MIT
   zip-stream                    4.1.1     MIT
@@ -520,7 +522,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
-@azure/identity 4.13.3
+@azure/identity 4.14.1
 Lizenz:  MIT
 Autor:   Microsoft Corporation
 Quelle:  https://github.com/Azure/azure-sdk-for-js
@@ -670,36 +672,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE
 
 --------------------------------------------------------------------------------
-@azure/msal-common 16.14.1
-Lizenz:  MIT
-Autor:   Microsoft
-Quelle:  https://github.com/AzureAD/microsoft-authentication-library-for-js
-Text:    Datei LICENSE
---------------------------------------------------------------------------------
-
-MIT License
-
-Copyright (c) Microsoft Corporation. All rights reserved.
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE
-
---------------------------------------------------------------------------------
 @azure/msal-common 16.14.2
 Lizenz:  MIT
 Autor:   Microsoft
@@ -730,7 +702,37 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE
 
 --------------------------------------------------------------------------------
-@azure/msal-node 6.0.1
+@azure/msal-common 16.16.2
+Lizenz:  MIT
+Autor:   Microsoft
+Quelle:  https://github.com/AzureAD/microsoft-authentication-library-for-js
+Text:    Datei LICENSE
+--------------------------------------------------------------------------------
+
+MIT License
+
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE
+
+--------------------------------------------------------------------------------
+@azure/msal-node 7.2.2
 Lizenz:  MIT
 Autor:   Microsoft
 Quelle:  https://github.com/AzureAD/microsoft-authentication-library-for-js
@@ -3042,6 +3044,24 @@ The above copyright notice and this permission notice shall be included in all c
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 --------------------------------------------------------------------------------
+is-in-ssh 1.0.0
+Lizenz:  MIT
+Autor:   Sindre Sorhus
+Quelle:  https://github.com/sindresorhus/is-in-ssh
+Text:    Datei license
+--------------------------------------------------------------------------------
+
+MIT License
+
+Copyright (c) Sindre Sorhus <sindresorhus@gmail.com> (https://sindresorhus.com)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+--------------------------------------------------------------------------------
 is-inside-container 1.0.0
 Lizenz:  MIT
 Autor:   Sindre Sorhus
@@ -4835,7 +4855,7 @@ ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR
 IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 --------------------------------------------------------------------------------
-open 10.2.0
+open 11.0.4
 Lizenz:  MIT
 Autor:   Sindre Sorhus
 Quelle:  https://github.com/sindresorhus/open
@@ -5374,6 +5394,24 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
+
+--------------------------------------------------------------------------------
+powershell-utils 0.2.1
+Lizenz:  MIT
+Autor:   Sindre Sorhus
+Quelle:  https://github.com/sindresorhus/powershell-utils
+Text:    Datei license
+--------------------------------------------------------------------------------
+
+MIT License
+
+Copyright (c) Sindre Sorhus <sindresorhus@gmail.com> (https://sindresorhus.com)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 process 0.11.10
@@ -6562,7 +6600,7 @@ ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR
 IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 --------------------------------------------------------------------------------
-wsl-utils 0.1.0
+wsl-utils 1.0.1
 Lizenz:  MIT
 Autor:   Sindre Sorhus
 Quelle:  https://github.com/sindresorhus/wsl-utils
